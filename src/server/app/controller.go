@@ -8,9 +8,9 @@ type Controller interface {
 	RegisterEndpoints(router *gin.RouterGroup)
 }
 
-var controllers []Controller
+var apis []Controller
 
-// RegisterController registers a controller to a router
-func RegisterController(newCtn func() Controller) {
-	controllers = append(controllers, newCtn())
+// RegisterApi registers a controller to a router
+func RegisterApi(newApi func() Controller) {
+	apis = append(apis, newApi())
 }

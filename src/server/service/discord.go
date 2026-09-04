@@ -8,7 +8,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"template/app"
+
+	"github.com/killi1812/wfrp5e-character_sheet/app"
 
 	"go.uber.org/zap"
 )

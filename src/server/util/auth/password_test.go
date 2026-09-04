@@ -1,8 +1,9 @@
 package auth_test
 
 import (
-	"template/util/auth"
 	"testing"
+
+	"github.com/killi1812/wfrp5e-character_sheet/util/auth"
 
 	"golang.org/x/crypto/bcrypt"
 )

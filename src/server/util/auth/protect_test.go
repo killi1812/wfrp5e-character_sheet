@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"template/app"
-	"template/model"
-	"template/util/auth"
 	"testing"
 	"time"
+
+	"github.com/killi1812/wfrp5e-character_sheet/app"
+	"github.com/killi1812/wfrp5e-character_sheet/util/auth"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
@@ -16,18 +16,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// --- Test Suite Definition ---
 type MiddlewareTestSuite struct {
 	suite.Suite
 	router *gin.Engine
 }
 
-// SetupSuite runs once before all tests in the suite
 func (suite *MiddlewareTestSuite) SetupSuite() {
 	app.AccessKey = "test-middleware-access-key"
 	app.RefreshKey = "test-middleware-refresh-key"
 
-	// Setup Gin router for testing
 	gin.SetMode(gin.TestMode)
 	suite.router = gin.New()
 
@@ -40,7 +37,6 @@ func (suite *MiddlewareTestSuite) SetupSuite() {
 	})
 }
 
-// Helper to make HTTP requests
 func (suite *MiddlewareTestSuite) performRequest(method, path, token string, body ...string) *httptest.ResponseRecorder {
 	var reqBody *strings.Reader
 	if len(body) > 0 {
@@ -62,8 +58,7 @@ func (suite *MiddlewareTestSuite) performRequest(method, path, token string, bod
 	return w
 }
 
-// Helper to generate a token
-func (suite *MiddlewareTestSuite) generateToken(userID, username string, userRole model.UserRole, expiresAt time.Time) string {
+func (suite *MiddlewareTestSuite) generateToken(userID, username string, userRole string, expiresAt time.Time) string {
 	claims := &auth.Claims{
 		Username: username,
 		Role:     userRole,
@@ -71,7 +66,7 @@ func (suite *MiddlewareTestSuite) generateToken(userID, username string, userRol
 			ID:        userID,
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)), // Allow for slight clock skew
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -81,8 +76,6 @@ func (suite *MiddlewareTestSuite) generateToken(userID, username string, userRol
 	}
 	return tokenString
 }
-
-// --- Test Cases for Protect Middleware ---
 
 func (suite *MiddlewareTestSuite) TestProtect_ValidToken_GeneralAccess() {
 	testUserID := "123"
@@ -102,7 +95,7 @@ func (suite *MiddlewareTestSuite) TestProtect_NoToken() {
 }
 
 func (suite *MiddlewareTestSuite) TestProtect_InvalidTokenFormat_NoBearer() {
-	w := httptest.NewRecorder() // Use httptest directly for more control over header
+	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/protected/general", nil)
 	req.Header.Set("Authorization", "InvalidTokenWithoutBearerPrefix")
 	suite.router.ServeHTTP(w, req)
@@ -119,18 +112,13 @@ func (suite *MiddlewareTestSuite) TestProtect_InvalidTokenFormat_TooShort() {
 }
 
 func (suite *MiddlewareTestSuite) TestProtect_MalformedToken() {
-	// This token is not a valid JWT structure
-	malformedToken := "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ" // Missing signature part
+	malformedToken := "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ"
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/protected/general", nil)
-	req.Header.Set("Authorization", malformedToken) // Set directly to bypass "Bearer " prefixing in helper for this specific case
+	req.Header.Set("Authorization", malformedToken)
 	suite.router.ServeHTTP(w, req)
 
 	assert.Equal(suite.T(), http.StatusUnauthorized, w.Code)
-	// The error message might vary based on JWT library, "Invalid token" or "token contains an invalid number of segments"
-	// For this test, we check for "Invalid token" as per the middleware's generic error for parsing issues.
-	// A more specific check might involve parsing the JSON response if your middleware returns one.
-	// The current middleware returns "Invalid token" for jwt.ParseWithClaims errors.
 	assert.Contains(suite.T(), w.Body.String(), "Invalid token")
 }
 
@@ -141,30 +129,23 @@ func (suite *MiddlewareTestSuite) TestProtect_ExpiredToken() {
 	w := suite.performRequest(http.MethodGet, "/protected/general", expiredToken)
 
 	assert.Equal(suite.T(), http.StatusUnauthorized, w.Code)
-	// The middleware uses `token.Valid` which would be false for an expired token.
-	// The specific error from `jwt.ParseWithClaims` would be `jwt.ErrTokenExpired`.
-	// The middleware then returns "Invalid token".
 	assert.Contains(suite.T(), w.Body.String(), "Invalid token")
 }
 
 func (suite *MiddlewareTestSuite) TestProtect_WrongSigningKey() {
 	claims := &auth.Claims{
 		Username: "wrongkey@example.com",
-		//Role:     model.RoleOsoba,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        "12345",
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	// Sign with a different key
 	wrongKeyToken, _ := token.SignedString([]byte("a-completely-different-secret-key"))
 
 	w := suite.performRequest(http.MethodGet, "/protected/general", wrongKeyToken)
 
 	assert.Equal(suite.T(), http.StatusUnauthorized, w.Code)
-	// Error from `jwt.ParseWithClaims` would be `jwt.ErrSignatureInvalid`.
-	// Middleware returns "Invalid token".
 	assert.Contains(suite.T(), w.Body.String(), "Invalid token")
 }
 
@@ -185,10 +166,8 @@ func (suite *MiddlewareTestSuite) TestProtect_ValidToken_InsufficientRole() {
 	w := suite.performRequest(http.MethodGet, "/protected/admin", userToken)
 
 	assert.Equal(suite.T(), http.StatusForbidden, w.Code)
-	// No body expected for 403 from this middleware implementation
 }
 
-// --- Run Test Suite ---
 func TestMiddlewareSuite(t *testing.T) {
 	suite.Run(t, new(MiddlewareTestSuite))
 }

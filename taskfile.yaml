@@ -5,7 +5,7 @@ vars:
   # TODO: change project name
   PACKAGE: "github.com/killi1812/wfrp5e-character_sheet"
   PROJECT_DIR: "src"
-  TEST_PCKGS: "./util/* ./controller ./service ./dto "
+  TEST_PCKGS: "./util/... ./auth ./info ./user ./charactersheet"
 
 tasks:
   default:
@@ -23,7 +23,8 @@ tasks:
 
   build:
     desc: "Build app in production"
-    dir: "./{{.PROJECT_DIR}}/server"
+    deps: [webapp-build]
+    dir: "src/server"
     vars:
       BUILD: "prod"
       VERSION:
@@ -38,6 +39,16 @@ tasks:
       - cmd: go build -ldflags="{{.LDFLAGS}}" -o {{.BINARY_DIR}} .
     silent: true
     signal: SIGINT
+
+  webapp-build:
+    desc: "Build client app"
+    dir: "./{{.PROJECT_DIR}}/frontend"
+    cmds:
+      - cmd: npm install
+      - cmd: npm run build
+    signal: SIGINT
+    internal: true
+    silent: true
 
   dev-deps:
     desc: "Used to start both server and webapp in parralel"
@@ -55,7 +66,7 @@ tasks:
 
   server-dev:
     desc: "start server"
-    dir: "./{{.PROJECT_DIR}}/server"
+    dir: "src/server"
     vars:
       VERSION:
         sh: git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2> /dev/null | sed 's/^.//'
@@ -74,7 +85,7 @@ tasks:
 
   webapp-dev:
     desc: "Runs client app"
-    dir: "./{{.PROJECT_DIR}}/client"
+    dir: "./{{.PROJECT_DIR}}/frontend"
     cmds:
       - cmd: npm install
       - cmd: npm run dev
@@ -89,7 +100,7 @@ tasks:
 
   tidy:
     desc: "Runs go mod tidy"
-    dir: "./{{.PROJECT_DIR}}/server"
+    dir: "src/server"
     cmds:
       - cmd: go mod tidy
     silent: false
@@ -97,7 +108,7 @@ tasks:
 
   generate-swagger:
     desc: "Generate swagger documentation"
-    dir: "./{{.PROJECT_DIR}}/server"
+    dir: "src/server"
     cmds:
       - cmd: swag fmt
       - cmd: swag init
@@ -120,14 +131,14 @@ tasks:
 
   test-server:
     desc: "Run server tests"
-    dir: "./{{.PROJECT_DIR}}/server"
+    dir: "src/server"
     cmd: go test -v {{.TEST_PCKGS}} -parallel 10
     silent: true
     internal: true
 
   coverage-server:
     desc: "Produce server coverage"
-    dir: "./{{.PROJECT_DIR}}/server"
+    dir: "src/server"
     cmds:
       - cmd: go test {{.TEST_PCKGS}} -coverprofile=coverage.out
       - cmd: go tool cover -html=coverage.out

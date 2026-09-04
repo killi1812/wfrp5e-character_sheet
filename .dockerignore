@@ -1,42 +1,12 @@
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-
-# Test binary, built with `go test -c`
-*.test
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-.air.toml
-
-.gitignore
-script
-
+.git
+.github
 node_modules
-dist
-npm-debug.log
-
-Dockerfile
-.dockerignore
-README.md
-
-# build
-[Bb]uild/
-[Ll]og/
+**/node_modules
+**/dist
+**/build
 *.log
-[Bb]in/
-
-
-# env file
 *.env
-env.example
-
 .DS_Store
-*.swap
-*.old
 tmp/
-*.tmp
 .vscode/
 .idea/
-*.tar

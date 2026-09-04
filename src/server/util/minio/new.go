@@ -2,7 +2,8 @@ package minio
 
 import (
 	"context"
-	"template/app"
+
+	"github.com/killi1812/wfrp5e-character_sheet/app"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -10,8 +11,6 @@ import (
 )
 
 // New creates a new minio.Client
-//
-// TODO: check if it should be a singleton
 func New() *minio.Client {
 	minioClient, err := minio.New(app.MIOEndpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(app.MIOAccessKeyID, app.MIOSecretAccessKey, ""),

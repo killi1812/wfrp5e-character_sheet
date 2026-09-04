@@ -3,12 +3,10 @@ package seed
 import (
 	"errors"
 	"os"
-	"template/dto"
-	"template/model"
-	"template/service"
+
+	"github.com/killi1812/wfrp5e-character_sheet/user"
 
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 const (
@@ -16,20 +14,17 @@ const (
 	_OIB          = "11111111111"
 )
 
-var suadmin *model.User
+var suadmin *user.User
 
-// CreateSuperAdmin creates a SuperAdmin user if one doesn't already exist.
-// It reads the password from the SUPERADMIN_PASSWORD environment variable.
-// The function will panic if required environment variables are missing or
-// if user creation fails, as this is critical for application bootstrap.
+// createSuperAdmin creates a SuperAdmin user if one doesn't already exist.
 func createSuperAdmin() error {
-	userCrud := service.NewUserCrudService()
+	userCrud := user.NewUserCrudService()
 
 	// Check if SuperAdmin exists
 	{
 		_, err := userCrud.GetUserByOIB(_OIB)
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
+			if errors.Is(err, user.ErrRecordNotFound) {
 				zap.S().Infof("SuperAdmin not found, err %+v", err)
 			} else {
 				return err
@@ -41,7 +36,7 @@ func createSuperAdmin() error {
 		}
 	}
 
-	zap.S().Infoln("Crating superadmin creation")
+	zap.S().Infoln("Creating superadmin")
 	password := os.Getenv(_PASSWORD_ENV)
 	if password == "" {
 		return errors.New("env variable is empty")
@@ -50,7 +45,7 @@ func createSuperAdmin() error {
 		return errors.New("password must be at least 8 characters long")
 	}
 
-	dto := dto.NewUserDto{
+	dto := user.NewUserDto{
 		Username:  "superadmin",
 		FirstName: "Super",
 		LastName:  "Admin",
@@ -65,11 +60,11 @@ func createSuperAdmin() error {
 		return err
 	}
 
-	user, err := userCrud.Create(newUser, dto.Password)
+	usr, err := userCrud.Create(newUser, dto.Password)
 	if err != nil {
 		return err
 	}
-	suadmin = user
-	zap.S().Infof("superadmin created, %+v\n", user)
+	suadmin = usr
+	zap.S().Infof("superadmin created, %+v\n", usr)
 	return nil
 }

@@ -1,17 +1,14 @@
-// Package app preforms basic app functions like setup,Build time variables, loading config registering controllers,starting http server and global definitions
+// Package app performs basic app functions like setup, build time variables, loading config, registering controllers, starting http server and global definitions
 package app
 
 import (
 	"fmt"
-	"template/model"
-	"time"
 
 	"go.uber.org/dig"
 	"go.uber.org/zap"
 )
 
-// Setup will preform app setup or panic of it fails
-// Can only be called once
+// Setup will perform app setup or panic if it fails
 func Setup() {
 	// Logger setup
 	{
@@ -48,22 +45,8 @@ func Setup() {
 		digContainer = dig.New()
 	}
 
-	// gorm and Database setup
+	// Database setup (MongoDB)
 	{
-		db := newDbConn()
-		sqlDB, err := db.DB()
-		if err != nil {
-			zap.S().Panicf("failed to get database connection: %+v", err)
-		}
-
-		sqlDB.SetMaxIdleConns(10)
-		sqlDB.SetMaxOpenConns(100)
-		sqlDB.SetConnMaxLifetime(time.Hour)
-
-		if err = db.AutoMigrate(model.GetAllModels()...); err != nil {
-			zap.S().Panicf("Can't run AutoMigrate err = %+v", err)
-		}
-
-		Provide(newDbConn)
+		Provide(newMongoDb)
 	}
 }

@@ -1,10 +1,13 @@
 package main
 
 import (
-	"template/app"
-	"template/controller"
-	"template/service"
-	"template/util/seed"
+	"github.com/killi1812/wfrp5e-character_sheet/app"
+	"github.com/killi1812/wfrp5e-character_sheet/auth"
+	"github.com/killi1812/wfrp5e-character_sheet/charactersheet"
+	"github.com/killi1812/wfrp5e-character_sheet/info"
+	"github.com/killi1812/wfrp5e-character_sheet/service"
+	"github.com/killi1812/wfrp5e-character_sheet/user"
+	"github.com/killi1812/wfrp5e-character_sheet/util/seed"
 
 	"go.uber.org/zap"
 )
@@ -18,16 +21,16 @@ func init() {
 func main() {
 	// Provide logger
 	app.Provide(zap.S)
-	//app.Provide(minio.New)
 
 	app.Provide(service.NewDiscordService)
-	app.Provide(service.NewUserCrudService)
-	app.Provide(service.NewAuthService)
+	app.Provide(user.NewUserCrudService)
+	app.Provide(auth.NewAuthService)
+	app.Provide(charactersheet.NewCharacterSheetCrudService)
 
-	app.RegisterController(controller.NewGameCnt)
-	app.RegisterController(controller.NewInfoCnt)
-	app.RegisterController(controller.NewUserCtn)
-	app.RegisterController(controller.NewAuthCtn)
+	app.RegisterApi(info.NewInfoCnt)
+	app.RegisterApi(user.NewUserCtn)
+	app.RegisterApi(auth.NewAuthCtn)
+	app.RegisterApi(charactersheet.NewCharacterSheetCtn)
 
 	seed.Insert()
 

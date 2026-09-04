@@ -1,33 +1,44 @@
-FROM golang:1.26-alpine AS builder
+# Stage 1: Build Vuetify Frontend
+FROM node:22-alpine AS frontend-builder
+WORKDIR /app/frontend
 
-WORKDIR /src/server/build
+COPY src/frontend/package*.json ./
+RUN npm ci || npm install
 
-COPY src/go.mod src/go.sum ./
+COPY src/frontend ./
+RUN npm run build
+
+# Stage 2: Build Go Server
+FROM golang:1.25-alpine AS backend-builder
+WORKDIR /app/server
+
+COPY src/server/go.mod src/server/go.sum ./
 RUN go mod download
 
-# Copy the rest of the source code
-COPY src/ .
+COPY src/server ./
 
-# Define build arguments
 ARG BUILD=prod
 ARG VERSION=0.0.0
 ARG COMMIT_HASH=n/a
 ARG BUILD_TIMESTAMP=n/a
 ARG PACKAGE="github.com/killi1812/wfrp5e-character_sheet"
 
-# Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build \
   -ldflags="-X '${PACKAGE}/app.Build=${BUILD}' -X '${PACKAGE}/app.Version=${VERSION}' -X '${PACKAGE}/app.CommitHash=${COMMIT_HASH}' -X '${PACKAGE}/app.BuildTimestamp=${BUILD_TIMESTAMP}'" \
-  -o cache-server main.go
+  -o wfrp5ecs main.go
 
-# Stage 2: Runtime
+# Stage 3: Runtime Container (Single Container for Backend & Frontend)
 FROM alpine:latest
-
 WORKDIR /app
 
-COPY --from=builder /build/wfrp5ecs .
+RUN apk add --no-cache ca-certificates
 
-# Re-declare build arguments to make them available in runtime stage ENV
+# Copy backend binary
+COPY --from=backend-builder /app/server/wfrp5ecs .
+
+# Copy built static frontend assets to ./public
+COPY --from=frontend-builder /app/frontend/dist ./public
+
 ARG BUILD=prod
 ARG VERSION=0.0.0
 ARG COMMIT_HASH=n/a
@@ -37,6 +48,9 @@ ENV APP_BUILD=${BUILD}
 ENV APP_VERSION=${VERSION}
 ENV APP_COMMIT_HASH=${COMMIT_HASH}
 ENV APP_BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
+ENV PORT=8080
+ENV MONGO_CONN=mongodb://mongo:27017
 
-# Define entrypoint
+EXPOSE 8080
+
 ENTRYPOINT ["./wfrp5ecs"]

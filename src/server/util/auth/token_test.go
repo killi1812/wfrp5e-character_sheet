@@ -3,12 +3,13 @@ package auth_test
 import (
 	"errors"
 	"reflect"
-	"template/app"
-	"template/model"
-	"template/util/auth"
-	"template/util/cerror"
 	"testing"
 	"time"
+
+	"github.com/killi1812/wfrp5e-character_sheet/app"
+	"github.com/killi1812/wfrp5e-character_sheet/user"
+	"github.com/killi1812/wfrp5e-character_sheet/util/auth"
+	"github.com/killi1812/wfrp5e-character_sheet/util/cerror"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -22,7 +23,6 @@ func TestParseToken(t *testing.T) {
 	accessTokenDuration := 5 * time.Minute
 	validClaims := auth.Claims{
 		Username: "test@example.com",
-		//Role:  model.RoleOsoba,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(accessTokenDuration)),
 			ID:        "test-uuid",
@@ -38,7 +38,6 @@ func TestParseToken(t *testing.T) {
 
 	expiredClaims := auth.Claims{
 		Username: "expired@example.com",
-		//Role:     model.UserRole("user"),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(-time.Minute)),
 			ID:        "expired-uuid",
@@ -136,10 +135,9 @@ func TestGenerateTokens(t *testing.T) {
 	app.AccessKey = "test-jwt-key"
 	app.RefreshKey = "test-refresh-key"
 
-	user := &model.User{
+	usr := &user.User{
 		Username: "test@example.com",
 		Uuid:     uuid.New(),
-		//Role:     model.RoleMupADMIN,
 	}
 
 	accessTokenDuration := 5 * time.Minute
@@ -147,14 +145,14 @@ func TestGenerateTokens(t *testing.T) {
 
 	tests := []struct {
 		name                     string
-		user                     *model.User
+		user                     *user.User
 		wantAccessTokenNonEmpty  bool
 		wantRefreshTokenNonEmpty bool
 		wantErr                  bool
 	}{
 		{
 			name:                     "Valid user",
-			user:                     user,
+			user:                     usr,
 			wantAccessTokenNonEmpty:  true,
 			wantRefreshTokenNonEmpty: true,
 			wantErr:                  false,
@@ -169,7 +167,15 @@ func TestGenerateTokens(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotAccessToken, gotRefreshToken, err := auth.GenerateTokens(tt.user)
+			var email, username, role string
+			var userUuid uuid.UUID
+			if tt.user != nil {
+				email = tt.user.Email
+				username = tt.user.Username
+				role = string(tt.user.Role)
+				userUuid = tt.user.Uuid
+			}
+			gotAccessToken, gotRefreshToken, err := auth.GenerateTokens(email, username, role, userUuid)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GenerateTokens() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -1,10 +1,10 @@
 package auth
 
 import (
-	"template/app"
-	"template/model"
-	"template/util/cerror"
 	"time"
+
+	"github.com/killi1812/wfrp5e-character_sheet/app"
+	"github.com/killi1812/wfrp5e-character_sheet/util/cerror"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -13,10 +13,10 @@ import (
 
 type Claims struct {
 	jwt.RegisteredClaims
-	Email     string         `json:"email"`
-	Username  string         `json:"username"`
-	Role      model.UserRole `json:"role"`
-	TokenUuid uuid.UUID      `json:"uuid"`
+	Email     string    `json:"email"`
+	Username  string    `json:"username"`
+	Role      string    `json:"role"`
+	TokenUuid uuid.UUID `json:"uuid"`
 }
 
 const (
@@ -25,7 +25,6 @@ const (
 )
 
 func ParseToken(authHeader string) (*jwt.Token, *Claims, error) {
-	// Parse token
 	if len(authHeader) <= len("Bearer ") || authHeader[:len("Bearer ")] != "Bearer " {
 		zap.S().Debugf("token: %s", authHeader)
 		return nil, nil, cerror.ErrInvalidTokenFormat
@@ -42,20 +41,20 @@ func ParseToken(authHeader string) (*jwt.Token, *Claims, error) {
 	return token, &claims, nil
 }
 
-// GenerateTokens return a jwt access token and refresh token or an error
-func GenerateTokens(user *model.User) (string, string, error) {
-	if user == nil {
+// GenerateTokens returns a jwt access token and refresh token or an error
+func GenerateTokens(email, username, role string, userUuid uuid.UUID) (string, string, error) {
+	if userUuid == uuid.Nil {
 		return "", "", cerror.ErrUserIsNil
 	}
 	uuidPair := uuid.New()
 	accessTokenClaims := &Claims{
-		Email:     user.Email,
-		Username:  user.Username,
-		Role:      user.Role,
+		Email:     email,
+		Username:  username,
+		Role:      role,
 		TokenUuid: uuidPair,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(_ACCESS_TOKEN_DURATION)),
-			ID:        user.Uuid.String(),
+			ID:        userUuid.String(),
 		},
 	}
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
@@ -66,13 +65,13 @@ func GenerateTokens(user *model.User) (string, string, error) {
 	}
 
 	refreshTokenClaims := &Claims{
-		Username:  user.Username,
-		Email:     user.Email,
-		Role:      user.Role,
+		Username:  username,
+		Email:     email,
+		Role:      role,
 		TokenUuid: uuidPair,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(_REFRESH_TOKEN_DURATION)),
-			ID:        user.Uuid.String(),
+			ID:        userUuid.String(),
 		},
 	}
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)

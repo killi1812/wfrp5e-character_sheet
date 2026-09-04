@@ -13,7 +13,7 @@ import (
 func LoadConfig() {
 	zap.S().Debugf("Loading env variables")
 
-	if err := godotenv.Load("../.env"); err != nil {
+	if err := godotenv.Load("../../.env"); err != nil {
 		zap.S().DPanicf("Env load err = %+v\n", err)
 		zap.S().Infof("Can't load config using real env")
 	}

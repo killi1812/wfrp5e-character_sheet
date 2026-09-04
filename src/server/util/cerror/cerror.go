@@ -3,7 +3,8 @@ package cerror
 import (
 	"errors"
 	"fmt"
-	"template/util/format"
+
+	"github.com/killi1812/wfrp5e-character_sheet/util/format"
 )
 
 var (
