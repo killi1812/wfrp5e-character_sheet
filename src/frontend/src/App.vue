@@ -113,47 +113,6 @@ const character = ref({
   // Wealth
   wealth: { gc: 14, ss: 28, bp: 56 },
 
-  // Encumbrance breakdown (Matching PDF)
-  encumbrance: {
-    weapons: 2,
-    armour: 3,
-    trappings: 5,
-    other: 1,
-  },
-
-  // Basic & Advanced Skills (Exact PDF List)
-  skills: [
-    { name: 'Art (Painting)', characteristic: 'Dex', adv: 0, type: 'Basic' },
-    { name: 'Athletics', characteristic: 'Ag', adv: 5, type: 'Basic' },
-    { name: 'Bribery', characteristic: 'Fel', adv: 0, type: 'Basic' },
-    { name: 'Charm', characteristic: 'Fel', adv: 5, type: 'Basic' },
-    { name: 'Charm Animal', characteristic: 'WP', adv: 0, type: 'Basic' },
-    { name: 'Climb', characteristic: 'S', adv: 0, type: 'Basic' },
-    { name: 'Consume Alcohol', characteristic: 'T', adv: 5, type: 'Basic' },
-    { name: 'Cool', characteristic: 'WP', adv: 8, type: 'Basic' },
-    { name: 'Dodge', characteristic: 'Ag', adv: 5, type: 'Basic' },
-    { name: 'Drive', characteristic: 'T', adv: 0, type: 'Basic' },
-    { name: 'Endurance', characteristic: 'T', adv: 5, type: 'Basic' },
-    { name: 'Entertain (Storytelling)', characteristic: 'Fel', adv: 0, type: 'Basic' },
-    { name: 'Gamble', characteristic: 'Int', adv: 0, type: 'Basic' },
-    { name: 'Gossip', characteristic: 'Fel', adv: 4, type: 'Basic' },
-    { name: 'Haggle', characteristic: 'Fel', adv: 2, type: 'Basic' },
-    { name: 'Intimidate', characteristic: 'S', adv: 0, type: 'Basic' },
-    { name: 'Intuition', characteristic: 'I', adv: 8, type: 'Basic' },
-    { name: 'Leadership', characteristic: 'Fel', adv: 0, type: 'Basic' },
-    { name: 'Melee (Basic)', characteristic: 'WS', adv: 5, type: 'Basic' },
-    { name: 'Melee (Polearm)', characteristic: 'WS', adv: 5, type: 'Basic' },
-    { name: 'Navigation', characteristic: 'Int', adv: 0, type: 'Basic' },
-    { name: 'Outdoor Survival', characteristic: 'Int', adv: 0, type: 'Basic' },
-    { name: 'Perception', characteristic: 'I', adv: 10, type: 'Basic' },
-    { name: 'Ride (Horse)', characteristic: 'Ag', adv: 0, type: 'Basic' },
-    { name: 'Row', characteristic: 'S', adv: 0, type: 'Basic' },
-    { name: 'Stealth (Urban)', characteristic: 'Ag', adv: 4, type: 'Basic' },
-    { name: 'Language (Magick)', characteristic: 'Int', adv: 15, type: 'Advanced' },
-    { name: 'Channeling (Aqshy)', characteristic: 'WP', adv: 14, type: 'Advanced' },
-    { name: 'Lore (Arcane)', characteristic: 'Int', adv: 12, type: 'Advanced' },
-  ],
-
   // Known Languages
   languages: [
     { name: 'Reikspiel (Native)', adv: 0 },
@@ -200,7 +159,44 @@ const character = ref({
   notes: 'Trained at the Colleges of Magic in Altdorf under Master Thaddeus. Seeking rare alchemical reagents in the Reikland to advance to Master Wizard.',
 })
 
-// Dynamically calculated WFRP 5e formulas
+// Basic Skills (Permanent PDF Printed Basic Skills - Cannot be deleted)
+const basicSkills = ref([
+  { name: 'Art (Painting)', characteristic: 'Dex', adv: 0 },
+  { name: 'Athletics', characteristic: 'Ag', adv: 5 },
+  { name: 'Bribery', characteristic: 'Fel', adv: 0 },
+  { name: 'Charm', characteristic: 'Fel', adv: 5 },
+  { name: 'Charm Animal', characteristic: 'WP', adv: 0 },
+  { name: 'Climb', characteristic: 'S', adv: 0 },
+  { name: 'Consume Alcohol', characteristic: 'T', adv: 5 },
+  { name: 'Cool', characteristic: 'WP', adv: 8 },
+  { name: 'Dodge', characteristic: 'Ag', adv: 5 },
+  { name: 'Drive', characteristic: 'T', adv: 0 },
+  { name: 'Endurance', characteristic: 'T', adv: 5 },
+  { name: 'Entertain (Storytelling)', characteristic: 'Fel', adv: 0 },
+  { name: 'Gamble', characteristic: 'Int', adv: 0 },
+  { name: 'Gossip', characteristic: 'Fel', adv: 4 },
+  { name: 'Haggle', characteristic: 'Fel', adv: 2 },
+  { name: 'Intimidate', characteristic: 'S', adv: 0 },
+  { name: 'Intuition', characteristic: 'I', adv: 8 },
+  { name: 'Leadership', characteristic: 'Fel', adv: 0 },
+  { name: 'Melee (Basic)', characteristic: 'WS', adv: 5 },
+  { name: 'Melee (Polearm)', characteristic: 'WS', adv: 5 },
+  { name: 'Navigation', characteristic: 'Int', adv: 0 },
+  { name: 'Outdoor Survival', characteristic: 'Int', adv: 0 },
+  { name: 'Perception', characteristic: 'I', adv: 10 },
+  { name: 'Ride (Horse)', characteristic: 'Ag', adv: 0 },
+  { name: 'Row', characteristic: 'S', adv: 0 },
+  { name: 'Stealth (Urban)', characteristic: 'Ag', adv: 4 },
+])
+
+// Advanced Skills (User can add & remove)
+const advancedSkills = ref([
+  { name: 'Language (Magick)', characteristic: 'Int', adv: 15 },
+  { name: 'Channeling (Aqshy)', characteristic: 'WP', adv: 14 },
+  { name: 'Lore (Arcane)', characteristic: 'Int', adv: 12 },
+])
+
+// Formulas
 const getCharCurrent = (code: string) => {
   const c = character.value.characteristics[code]
   if (!c) return 0
@@ -237,13 +233,13 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
   return base + (Number(skill.adv) || 0)
 }
 
-// Add/Remove Rows
-function addSkill() {
-  character.value.skills.push({ name: 'New Skill', characteristic: 'Int', adv: 0, type: 'Advanced' })
+// Add / Remove Row Handlers for Advanced Skills & items
+function addAdvancedSkill() {
+  advancedSkills.value.push({ name: 'New Advanced Skill', characteristic: 'Int', adv: 0 })
 }
 
-function removeSkill(index: number) {
-  character.value.skills.splice(index, 1)
+function removeAdvancedSkill(index: number) {
+  advancedSkills.value.splice(index, 1)
 }
 
 function addTalent() {
@@ -304,7 +300,7 @@ function removeMutation(index: number) {
 </script>
 
 <template>
-  <v-app class="wfrp-full-app">
+  <v-app class="wfrp-full-app bg-background text-on-background">
     <!-- Floating Kebab Button -->
     <div class="kebab-fixed-pos">
       <v-tooltip text="System Options & Settings" location="left">
@@ -324,11 +320,11 @@ function removeMutation(index: number) {
 
     <!-- Kebab POPOUT OVERLAY MODAL (Full Dialog, No dropdown menu) -->
     <v-dialog v-model="showKebabOverlay" max-width="500" transition="dialog-bottom-transition">
-      <v-card color="surface" class="pa-6 rounded-xl elevation-24 border-primary">
+      <v-card color="surface" class="pa-6 rounded-xl elevation-24 border">
         <div class="d-flex justify-space-between align-center mb-4">
           <div class="d-flex align-center">
             <v-icon icon="mdi-shield-cog" color="primary" class="mr-2" size="large" />
-            <h2 class="text-h5 font-weight-black mb-0">Character Sheet Menu</h2>
+            <h2 class="text-h5 font-weight-black mb-0 text-on-surface">Character Sheet Menu</h2>
           </div>
           <v-btn icon="mdi-close" variant="text" size="small" @click="showKebabOverlay = false" />
         </div>
@@ -336,20 +332,20 @@ function removeMutation(index: number) {
         <!-- User Status Banner -->
         <div v-if="currentUser" class="pa-4 bg-surface-variant rounded-lg mb-4 d-flex align-center justify-space-between border">
           <div>
-            <div class="text-subtitle-1 font-weight-bold">{{ currentUser.username }}</div>
+            <div class="text-subtitle-1 font-weight-bold text-on-surface-variant">{{ currentUser.username }}</div>
             <v-chip size="x-small" :color="isAdmin ? 'secondary' : 'info'" class="mt-1" variant="flat">
               {{ currentUser.role.toUpperCase() }}
             </v-chip>
           </div>
           <v-avatar color="primary" size="40">
-            <v-icon icon="mdi-account" color="surface" />
+            <v-icon icon="mdi-account" color="on-primary" />
           </v-avatar>
         </div>
 
         <v-list class="bg-transparent pa-0">
           <v-list-item
             :prepend-icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
-            :title="isDark ? 'Light Theme Mode' : 'Dark Theme Mode'"
+            :title="isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'"
             class="mb-2 rounded-lg bg-surface-variant border"
             @click="toggleTheme"
           />
@@ -367,7 +363,7 @@ function removeMutation(index: number) {
             title="Admin Control Panel"
             subtitle="User & Database Management"
             color="secondary"
-            class="mb-2 rounded-lg bg-secondary text-white font-weight-bold"
+            class="mb-2 rounded-lg bg-secondary text-on-secondary font-weight-bold"
             @click="navigateTo('admin')"
           />
 
@@ -376,7 +372,7 @@ function removeMutation(index: number) {
             v-if="!currentUser"
             prepend-icon="mdi-login"
             title="Sign In / Register"
-            class="mt-4 rounded-lg bg-primary text-surface font-weight-bold"
+            class="mt-4 rounded-lg bg-primary text-on-primary font-weight-bold"
             @click="showKebabOverlay = false; showAuthDialog = true"
           />
           <v-list-item
@@ -392,15 +388,11 @@ function removeMutation(index: number) {
 
     <!-- PAGE CONDITIONAL RENDERING -->
     <template v-if="currentPage === 'sheet'">
-      <!-- SNAP-SCROLL CONTAINER: PAGE 1 & PAGE 2 (End-to-End Width, No Centering) -->
-      <div class="snap-scroll-wrapper">
-      
-      <!-- PAGE 1: CHARACTER OVERVIEW & SKILLS (Exact PDF Page 1) -->
-      <section id="page-1" class="sheet-page">
-        <div class="page-indicator-badge">PAGE 1 - CHARACTER & SKILLS</div>
+      <!-- CONTINUOUS SCROLL PAGE (Full Width Stretch, No max-width limits, No snap scroll) -->
+      <main class="wfrp-sheet-body pa-3 pa-md-5">
         
         <!-- HEADER BLOCK -->
-        <v-card color="surface" elevation="2" class="mb-4 pa-3 rounded-lg border-gold">
+        <v-card color="surface" elevation="2" class="mb-4 pa-4 rounded-lg border">
           <v-row dense align="center">
             <v-col cols="12" md="3">
               <v-tooltip text="Character Name" location="top">
@@ -430,7 +422,7 @@ function removeMutation(index: number) {
             
             <!-- Career Tier Number Input -->
             <v-col cols="12" sm="4" md="2">
-              <v-tooltip text="Current Career Tier (e.g. 1, 2, 3, 4)" location="top">
+              <v-tooltip text="Current Career Tier Level (e.g. 1, 2, 3, 4)" location="top">
                 <template #activator="{ props: tProps }">
                   <v-text-field
                     v-bind="tProps"
@@ -447,7 +439,7 @@ function removeMutation(index: number) {
             </v-col>
 
             <!-- XP Tracker -->
-            <v-col cols="12" md="5">
+            <v-col cols="12" md="8">
               <div class="d-flex align-center gap-2">
                 <v-tooltip text="Experience points currently available to spend" location="top">
                   <template #activator="{ props: tProps }">
@@ -613,7 +605,7 @@ function removeMutation(index: number) {
                   <v-tooltip text="Head protection (d100 roll 01-09)" location="top">
                     <template #activator="{ props: tProps }">
                       <div v-bind="tProps" class="pa-2 border rounded bg-surface-variant">
-                        <div class="text-caption font-weight-bold">Head</div>
+                        <div class="text-caption font-weight-bold text-on-surface-variant">Head</div>
                         <div class="text-caption text-medium-emphasis">01-09</div>
                         <input v-model.number="character.armourPoints.head" type="number" class="clean-num-input mt-1" />
                       </div>
@@ -625,7 +617,7 @@ function removeMutation(index: number) {
                   <v-tooltip text="Left Arm protection (d100 roll 10-24)" location="top">
                     <template #activator="{ props: tProps }">
                       <div v-bind="tProps" class="pa-2 border rounded bg-surface-variant">
-                        <div class="text-caption font-weight-bold">L. Arm</div>
+                        <div class="text-caption font-weight-bold text-on-surface-variant">L. Arm</div>
                         <div class="text-caption text-medium-emphasis">10-24</div>
                         <input v-model.number="character.armourPoints.leftArm" type="number" class="clean-num-input mt-1" />
                       </div>
@@ -637,7 +629,7 @@ function removeMutation(index: number) {
                   <v-tooltip text="Right Arm protection (d100 roll 25-44)" location="top">
                     <template #activator="{ props: tProps }">
                       <div v-bind="tProps" class="pa-2 border rounded bg-surface-variant">
-                        <div class="text-caption font-weight-bold">R. Arm</div>
+                        <div class="text-caption font-weight-bold text-on-surface-variant">R. Arm</div>
                         <div class="text-caption text-medium-emphasis">25-44</div>
                         <input v-model.number="character.armourPoints.rightArm" type="number" class="clean-num-input mt-1" />
                       </div>
@@ -649,7 +641,7 @@ function removeMutation(index: number) {
                   <v-tooltip text="Body Torso protection (d100 roll 45-79)" location="top">
                     <template #activator="{ props: tProps }">
                       <div v-bind="tProps" class="pa-2 border rounded bg-surface-variant">
-                        <div class="text-caption font-weight-bold">Body</div>
+                        <div class="text-caption font-weight-bold text-on-surface-variant">Body</div>
                         <div class="text-caption text-medium-emphasis">45-79</div>
                         <input v-model.number="character.armourPoints.body" type="number" class="clean-num-input mt-1" />
                       </div>
@@ -661,7 +653,7 @@ function removeMutation(index: number) {
                   <v-tooltip text="Left Leg protection (d100 roll 80-89)" location="top">
                     <template #activator="{ props: tProps }">
                       <div v-bind="tProps" class="pa-2 border rounded bg-surface-variant">
-                        <div class="text-caption font-weight-bold">L. Leg</div>
+                        <div class="text-caption font-weight-bold text-on-surface-variant">L. Leg</div>
                         <div class="text-caption text-medium-emphasis">80-89</div>
                         <input v-model.number="character.armourPoints.leftLeg" type="number" class="clean-num-input mt-1" />
                       </div>
@@ -673,7 +665,7 @@ function removeMutation(index: number) {
                   <v-tooltip text="Right Leg protection (d100 roll 90-00)" location="top">
                     <template #activator="{ props: tProps }">
                       <div v-bind="tProps" class="pa-2 border rounded bg-surface-variant">
-                        <div class="text-caption font-weight-bold">R. Leg</div>
+                        <div class="text-caption font-weight-bold text-on-surface-variant">R. Leg</div>
                         <div class="text-caption text-medium-emphasis">90-00</div>
                         <input v-model.number="character.armourPoints.rightLeg" type="number" class="clean-num-input mt-1" />
                       </div>
@@ -685,7 +677,7 @@ function removeMutation(index: number) {
                   <v-tooltip text="Shield AP Bonus" location="top">
                     <template #activator="{ props: tProps }">
                       <div v-bind="tProps" class="pa-2 border rounded bg-surface-variant">
-                        <div class="text-caption font-weight-bold">Shield</div>
+                        <div class="text-caption font-weight-bold text-on-surface-variant">Shield</div>
                         <div class="text-caption text-medium-emphasis">Block</div>
                         <input v-model.number="character.armourPoints.shield" type="number" class="clean-num-input mt-1" />
                       </div>
@@ -705,27 +697,27 @@ function removeMutation(index: number) {
           </v-col>
         </v-row>
 
-        <!-- SKILLS TABLE (2 Columns matching PDF) -->
+        <!-- SEPARATE BASIC SKILLS TABLE (Printed Basic Skills - Cannot be deleted) -->
         <section class="mb-4">
           <v-card color="surface" elevation="2" class="rounded-lg border">
             <v-card-title class="pa-3 d-flex justify-space-between align-center text-subtitle-1 font-weight-bold">
               <div class="d-flex align-center">
                 <v-icon icon="mdi-book-open-variant" color="primary" class="mr-2" />
-                <span>SKILLS LIST (Basic & Advanced)</span>
+                <span>PRINTED BASIC SKILLS (Standard - Cannot be deleted)</span>
               </div>
-              <v-btn icon="mdi-plus" size="small" color="primary" variant="tonal" @click="addSkill" />
+              <v-chip size="x-small" color="info" variant="flat">Basic (All Characters)</v-chip>
             </v-card-title>
 
             <v-card-text class="pa-3 pt-0">
               <v-row dense>
                 <v-col
-                  v-for="(skill, idx) in character.skills"
+                  v-for="(skill, idx) in basicSkills"
                   :key="idx"
                   cols="12"
                   md="6"
                 >
                   <div class="d-flex align-center gap-1 border-bottom py-1">
-                    <input v-model="skill.name" type="text" class="inline-text-input font-weight-bold flex-grow-1" placeholder="Skill Name" />
+                    <input v-model="skill.name" type="text" class="inline-text-input font-weight-bold flex-grow-1" />
                     <select v-model="skill.characteristic" class="inline-select">
                       <option v-for="c in Object.keys(character.characteristics)" :key="c" :value="c">{{ c }}</option>
                     </select>
@@ -735,7 +727,44 @@ function removeMutation(index: number) {
                         <div v-bind="tProps" class="skill-total-tag">{{ getSkillTotal(skill) }}</div>
                       </template>
                     </v-tooltip>
-                    <v-btn icon="mdi-delete-outline" size="x-small" variant="text" color="error" @click="removeSkill(idx)" />
+                  </div>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+        </section>
+
+        <!-- SEPARATE ADVANCED SKILLS TABLE (User can add & remove) -->
+        <section class="mb-4">
+          <v-card color="surface" elevation="2" class="rounded-lg border">
+            <v-card-title class="pa-3 d-flex justify-space-between align-center text-subtitle-1 font-weight-bold">
+              <div class="d-flex align-center">
+                <v-icon icon="mdi-star-outline" color="secondary" class="mr-2" />
+                <span>ADVANCED & GROUPED SKILLS (Add custom specialized skills)</span>
+              </div>
+              <v-btn icon="mdi-plus" size="small" color="primary" variant="tonal" @click="addAdvancedSkill" />
+            </v-card-title>
+
+            <v-card-text class="pa-3 pt-0">
+              <v-row dense>
+                <v-col
+                  v-for="(skill, idx) in advancedSkills"
+                  :key="idx"
+                  cols="12"
+                  md="6"
+                >
+                  <div class="d-flex align-center gap-1 border-bottom py-1">
+                    <input v-model="skill.name" type="text" class="inline-text-input font-weight-bold text-secondary flex-grow-1" placeholder="Advanced Skill Name" />
+                    <select v-model="skill.characteristic" class="inline-select">
+                      <option v-for="c in Object.keys(character.characteristics)" :key="c" :value="c">{{ c }}</option>
+                    </select>
+                    <input v-model.number="skill.adv" type="number" class="clean-num-input text-success font-weight-bold" placeholder="Adv" />
+                    <v-tooltip text="Skill Total = Characteristic Current + Advances" location="right">
+                      <template #activator="{ props: tProps }">
+                        <div v-bind="tProps" class="skill-total-tag">{{ getSkillTotal(skill) }}</div>
+                      </template>
+                    </v-tooltip>
+                    <v-btn icon="mdi-delete-outline" size="x-small" variant="text" color="error" @click="removeAdvancedSkill(idx)" />
                   </div>
                 </v-col>
               </v-row>
@@ -744,7 +773,7 @@ function removeMutation(index: number) {
         </section>
 
         <!-- TALENTS & LANGUAGES -->
-        <v-row dense>
+        <v-row dense class="mb-4">
           <!-- Talents -->
           <v-col cols="12" md="8">
             <v-card color="surface" elevation="2" class="rounded-lg pa-3 border h-100">
@@ -795,11 +824,6 @@ function removeMutation(index: number) {
             </v-card>
           </v-col>
         </v-row>
-      </section>
-
-      <!-- PAGE 2: WEAPONS, ARMOUR, TRAPPINGS & MAGIC (Exact PDF Page 2) -->
-      <section id="page-2" class="sheet-page">
-        <div class="page-indicator-badge">PAGE 2 - WEAPONS, INVENTORY & MAGIC</div>
 
         <!-- WEAPONS & ARMOUR -->
         <v-row dense class="mb-4">
@@ -1023,9 +1047,7 @@ function removeMutation(index: number) {
             </v-card>
           </v-col>
         </v-row>
-      </section>
-
-    </div>
+      </main>
     </template>
 
     <!-- STANDALONE ADMIN PAGE VIEW -->
@@ -1039,7 +1061,7 @@ function removeMutation(index: number) {
 </template>
 
 <style>
-/* Global CSS Rules for full stretch, scroll snap and hiding number spinners */
+/* Clean Theme-Aware CSS Styles without any !important hacks */
 
 /* Hide HTML & Chrome/Edge/Safari/Firefox number spinner arrows */
 input[type='number']::-webkit-outer-spin-button,
@@ -1060,43 +1082,14 @@ input[type='number'] {
 
 .wfrp-full-app {
   min-height: 100vh;
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-/* Snap Scroll Container between Page 1 and Page 2 */
-.snap-scroll-wrapper {
-  height: 100vh;
   width: 100%;
-  overflow-y: auto;
-  scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
+  margin: 0;
+  padding: 0;
 }
 
-.sheet-page {
-  min-height: 100vh;
-  width: 100% !important;
-  max-width: 100% !important;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-  padding: 16px 24px;
+.wfrp-sheet-body {
+  width: 100%;
   box-sizing: border-box;
-  position: relative;
-}
-
-.page-indicator-badge {
-  font-size: 0.75rem;
-  font-weight: 900;
-  letter-spacing: 1px;
-  color: #C99700;
-  background: rgba(201, 151, 0, 0.12);
-  border: 1px solid rgba(201, 151, 0, 0.3);
-  padding: 4px 10px;
-  border-radius: 4px;
-  display: inline-block;
-  margin-bottom: 12px;
 }
 
 /* Floating Kebab Action Button */
@@ -1137,14 +1130,14 @@ input[type='number'] {
   }
 }
 
-/* Clean Custom Number Input (No spinner arrows) */
+/* Theme-Aware Custom Inputs */
 .clean-num-input {
   width: 44px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--v-theme-surface-variant);
+  border: 1px solid rgba(var(--v-border-color), 0.25);
   border-radius: 4px;
-  color: inherit;
+  color: var(--v-theme-on-surface);
   font-size: 0.9rem;
   padding: 2px 0;
   outline: none;
@@ -1152,16 +1145,14 @@ input[type='number'] {
 }
 
 .clean-num-input:focus {
-  border-color: #C99700;
-  box-shadow: 0 0 6px rgba(201, 151, 0, 0.4);
+  border-color: var(--v-theme-primary);
 }
 
-/* Inline Text Input for tables */
 .inline-text-input {
   background: transparent;
   border: none;
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
-  color: inherit;
+  border-bottom: 1px dashed rgba(var(--v-border-color), 0.3);
+  color: var(--v-theme-on-surface);
   font-size: 0.9rem;
   padding: 2px 4px;
   outline: none;
@@ -1169,14 +1160,14 @@ input[type='number'] {
 }
 
 .inline-text-input:focus {
-  border-bottom-color: #C99700;
+  border-bottom-color: var(--v-theme-primary);
 }
 
 .inline-select {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--v-theme-surface-variant);
+  border: 1px solid rgba(var(--v-border-color), 0.25);
   border-radius: 4px;
-  color: inherit;
+  color: var(--v-theme-on-surface);
   font-size: 0.85rem;
   padding: 2px 4px;
   outline: none;
@@ -1187,7 +1178,7 @@ input[type='number'] {
   text-align: center;
   font-weight: 900;
   font-size: 0.95rem;
-  color: #C99700;
+  color: var(--v-theme-primary);
 }
 
 .gap-1 { gap: 4px; }
@@ -1195,23 +1186,16 @@ input[type='number'] {
 .gap-3 { gap: 12px; }
 
 .border-bottom {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.12);
 }
 
-.border-gold {
-  border: 1px solid rgba(201, 151, 0, 0.3) !important;
+.cursor-pointer {
+  cursor: pointer;
 }
 
 @media print {
-  .kebab-fixed-pos,
-  .page-indicator-badge {
-    display: none !important;
-  }
-
-  .sheet-page {
-    page-break-after: always;
-    height: auto;
-    min-height: auto;
+  .kebab-fixed-pos {
+    display: none;
   }
 }
 </style>
