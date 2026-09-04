@@ -3,7 +3,7 @@ version: "3"
 vars:
   BINARY_DIR: ./build
   # TODO: change project name
-  PACKAGE: "wfrp5e_csh"
+  PACKAGE: "github.com/killi1812/wfrp5e-character_sheet"
   PROJECT_DIR: "src"
   TEST_PCKGS: "./util/* ./controller ./service ./dto "
 
@@ -161,7 +161,7 @@ tasks:
   # |    Docker build     |
   # |_____________________|
 
-    # TODO: reimplemnt
+  # TODO: reimplemnt
   d-build:
     desc: "build a docker image"
     vars:

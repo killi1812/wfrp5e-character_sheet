@@ -1,33 +1,42 @@
-# TODO: add building for frontend
+FROM golang:1.26-alpine AS builder
 
-# Stage 2: Build the backend
-FROM golang:1.25 AS builder
-WORKDIR /app
+WORKDIR /src/server/build
 
-# Install Task runner
-RUN go install github.com/go-task/task/v3/cmd/task@latest
-
-# Copy Go module files and download dependencies first for caching
-COPY ./server/go.mod ./server/go.sum ./
+COPY src/go.mod src/go.sum ./
 RUN go mod download
 
-# Copy the taskfile so we can use it
-COPY taskfile.yaml .
+# Copy the rest of the source code
+COPY src/ .
 
-# Copy the entire server source code
-COPY . .
+# Define build arguments
+ARG BUILD=prod
+ARG VERSION=0.0.0
+ARG COMMIT_HASH=n/a
+ARG BUILD_TIMESTAMP=n/a
+ARG PACKAGE="github.com/killi1812/wfrp5e-character_sheet"
 
-# Copy the built frontend assets from the 'frontend' stage
-# COPY --from=frontend /app/client/dist ./server/client/dist
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build \
+  -ldflags="-X '${PACKAGE}/app.Build=${BUILD}' -X '${PACKAGE}/app.Version=${VERSION}' -X '${PACKAGE}/app.CommitHash=${COMMIT_HASH}' -X '${PACKAGE}/app.BuildTimestamp=${BUILD_TIMESTAMP}'" \
+  -o cache-server main.go
 
-RUN task build
+# Stage 2: Runtime
+FROM alpine:latest
 
-FROM gcr.io/distroless/static-debian11
-WORKDIR /
+WORKDIR /app
 
-# Copy only the compiled binary from the builder stage
-COPY --from=builder ./app/server/build/template /template
+COPY --from=builder /build/wfrp5ecs .
 
-# Set the entrypoint for the container
-ENTRYPOINT ["/template"]
+# Re-declare build arguments to make them available in runtime stage ENV
+ARG BUILD=prod
+ARG VERSION=0.0.0
+ARG COMMIT_HASH=n/a
+ARG BUILD_TIMESTAMP=n/a
 
+ENV APP_BUILD=${BUILD}
+ENV APP_VERSION=${VERSION}
+ENV APP_COMMIT_HASH=${COMMIT_HASH}
+ENV APP_BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
+
+# Define entrypoint
+ENTRYPOINT ["./wfrp5ecs"]
