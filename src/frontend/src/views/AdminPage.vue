@@ -241,13 +241,6 @@ function deleteSheet(uuidStr: string) {
                 </v-card>
               </v-col>
               <v-col cols="12" sm="6" md="4">
-                <v-card variant="tonal" color="warning" class="pa-4 text-center rounded-lg border">
-                  <v-icon icon="mdi-server-network" size="40" class="mb-2" />
-                  <div class="text-caption font-weight-bold text-uppercase">Server Uptime</div>
-                  <div class="text-h6 font-weight-black">{{ systemStats.serverUptime }}</div>
-                </v-card>
-              </v-col>
-              <v-col cols="12" sm="6" md="4">
                 <v-card variant="tonal" color="secondary" class="pa-4 text-center rounded-lg border">
                   <v-icon icon="mdi-memory" size="40" class="mb-2" />
                   <div class="text-caption font-weight-bold text-uppercase">Memory Usage</div>

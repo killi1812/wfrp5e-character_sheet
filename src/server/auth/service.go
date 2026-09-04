@@ -54,7 +54,12 @@ func (s *AuthService) Login(email, password string) (string, error) {
 	defer cancel()
 
 	var usr user.User
-	err := s.usersColl().FindOne(ctx, bson.M{"email": email}).Decode(&usr)
+	err := s.usersColl().FindOne(ctx, bson.M{
+		"$or": []bson.M{
+			{"email": email},
+			{"username": email},
+		},
+	}).Decode(&usr)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			s.logger.Debugf("User not found Email = %s", email)

@@ -28,7 +28,7 @@ type IUserCrudService interface {
 	Delete(uuid uuid.UUID) error
 	GetAllUsers() ([]User, error)
 	SearchUsersByName(query string) ([]User, error)
-	GetUserByOIB(oib string) (*User, error)
+	GetUserByEmail(email string) (*User, error)
 }
 
 type UserCrudService struct {
@@ -87,13 +87,8 @@ func (u *UserCrudService) Delete(userUuid uuid.UUID) error {
 		return err
 	}
 
-	existing.Username = fmt.Sprintf("deleted_user_%s", userUuid.String())
-	existing.FirstName = "Deleted"
-	existing.LastName = "User"
-	existing.OIB = fmt.Sprintf("000000_%s", userUuid.String()[:8])
-	existing.BirthDate = time.Time{}
-	existing.Residence = "Anonymized"
-	existing.Email = fmt.Sprintf("deleted_%s@example.com", userUuid.String())
+	existing.Username = fmt.Sprintf("deleted_user_%s", userUuid.String()[:8])
+	existing.Email = fmt.Sprintf("deleted_%s@example.com", userUuid.String()[:8])
 	existing.PasswordHash = ""
 	existing.UpdatedAt = time.Now()
 
@@ -172,7 +167,7 @@ func (u *UserCrudService) GetAllUsers() ([]User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	cursor, err := u.usersColl().Find(ctx, bson.M{"role": bson.M{"$ne": ROLE_SUPER_ADMIN}})
+	cursor, err := u.usersColl().Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +189,7 @@ func (u *UserCrudService) SearchUsersByName(query string) ([]User, error) {
 	normalizedQuery := strings.ToLower(strings.TrimSpace(query))
 	var scoredUsers []UserWithScore
 	for _, user := range users {
-		fullName := strings.ToLower(user.FirstName + " " + user.LastName)
+		fullName := strings.ToLower(user.Username + " " + user.Email)
 		score := smetrics.JaroWinkler(normalizedQuery, fullName, 0.7, 4)
 		scoredUsers = append(scoredUsers, UserWithScore{User: user, Score: score})
 	}
@@ -213,12 +208,12 @@ func (u *UserCrudService) SearchUsersByName(query string) ([]User, error) {
 	return filteredUsers, nil
 }
 
-func (u *UserCrudService) GetUserByOIB(oib string) (*User, error) {
+func (u *UserCrudService) GetUserByEmail(email string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var user User
-	err := u.usersColl().FindOne(ctx, bson.M{"oib": oib}).Decode(&user)
+	err := u.usersColl().FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrRecordNotFound

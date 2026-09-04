@@ -128,20 +128,20 @@ type CareerAdvancementTracker struct {
 }
 
 type CharacterSheet struct {
-	ID        bson.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
-	Uuid      uuid.UUID     `json:"uuid" bson:"uuid"`
-	UserUuid  uuid.UUID     `json:"userUuid" bson:"user_uuid"`
+	ID       bson.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	Uuid     uuid.UUID     `json:"uuid" bson:"uuid"`
+	UserUuid uuid.UUID     `json:"userUuid" bson:"user_uuid"`
 
 	// Header Info
-	Name               string `json:"name" bson:"name"`
-	Species            string `json:"species" bson:"species"`
-	Appearance         string `json:"appearance" bson:"appearance"`
-	Class              string `json:"class" bson:"class"`
-	Career             string `json:"career" bson:"career"`
-	CareerLevel        int    `json:"careerLevel" bson:"career_level"`
-	CareerPath         string `json:"careerPath" bson:"career_path"`
-	CareerAdvancement  CareerAdvancementTracker `json:"careerAdvancement" bson:"career_advancement"`
-	Status             string `json:"status" bson:"status"`
+	Name              string                   `json:"name" bson:"name"`
+	Species           string                   `json:"species" bson:"species"`
+	Appearance        string                   `json:"appearance" bson:"appearance"`
+	Class             string                   `json:"class" bson:"class"`
+	Career            string                   `json:"career" bson:"career"`
+	CareerLevel       int                      `json:"careerLevel" bson:"career_level"`
+	CareerPath        string                   `json:"careerPath" bson:"career_path"`
+	CareerAdvancement CareerAdvancementTracker `json:"careerAdvancement" bson:"career_advancement"`
+	Status            string                   `json:"status" bson:"status"`
 
 	// XP
 	XpCurrent int `json:"xpCurrent" bson:"xp_current"`
@@ -165,20 +165,20 @@ type CharacterSheet struct {
 	PartyAmbition    string `json:"partyAmbition" bson:"party_ambition"`
 
 	// Sub-lists
-	Languages        []Language      `json:"languages" bson:"languages"`
-	Skills           []Skill         `json:"skills" bson:"skills"`
-	Talents          []Talent        `json:"talents" bson:"talents"`
-	Wounds           Wounds          `json:"wounds" bson:"wounds"`
-	ArmourPoints     ArmourLocation  `json:"armourPoints" bson:"armour_points"`
-	Wealth           Wealth          `json:"wealth" bson:"wealth"`
-	Encumbrance      Encumbrance     `json:"encumbrance" bson:"encumbrance"`
-	CorruptionPoints int             `json:"corruptionPoints" bson:"corruption_points"`
-	Mutations        []Mutation      `json:"mutations" bson:"mutations"`
-	Weapons          []WeaponItem    `json:"weapons" bson:"weapons"`
-	Armour           []ArmourItem    `json:"armour" bson:"armour"`
-	Trappings        []TrappingItem  `json:"trappings" bson:"trappings"`
-	SpellsAndPrayers []SpellItem     `json:"spellsAndPrayers" bson:"spells_and_prayers"`
-	Notes            string          `json:"notes" bson:"notes"`
+	Languages        []Language     `json:"languages" bson:"languages"`
+	Skills           []Skill        `json:"skills" bson:"skills"`
+	Talents          []Talent       `json:"talents" bson:"talents"`
+	Wounds           Wounds         `json:"wounds" bson:"wounds"`
+	ArmourPoints     ArmourLocation `json:"armourPoints" bson:"armour_points"`
+	Wealth           Wealth         `json:"wealth" bson:"wealth"`
+	Encumbrance      Encumbrance    `json:"encumbrance" bson:"encumbrance"`
+	CorruptionPoints int            `json:"corruptionPoints" bson:"corruption_points"`
+	Mutations        []Mutation     `json:"mutations" bson:"mutations"`
+	Weapons          []WeaponItem   `json:"weapons" bson:"weapons"`
+	Armour           []ArmourItem   `json:"armour" bson:"armour"`
+	Trappings        []TrappingItem `json:"trappings" bson:"trappings"`
+	SpellsAndPrayers []SpellItem    `json:"spellsAndPrayers" bson:"spells_and_prayers"`
+	Notes            string         `json:"notes" bson:"notes"`
 
 	CreatedAt time.Time `json:"createdAt" bson:"created_at"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updated_at"`

@@ -40,12 +40,11 @@ func (u *UserCtn) RegisterEndpoints(api *gin.RouterGroup) {
 	group.GET("/my-data", auth.Protect(), u.getLoggedInUser)
 
 	// register Endpoints
-	group.Use(auth.Protect(string(ROLE_SUPER_ADMIN), string(ROLE_ADMIN)))
+	group.Use(auth.Protect(string(ROLE_ADMIN)))
 	group.POST("/", u.create)
 	group.GET("/:uuid", u.get)
 	group.PUT("/:uuid", u.update)
 	group.DELETE("/:uuid", u.delete)
-	group.GET("/oib/:oib", u.getUserByOib)
 	group.GET("/all-users", u.getAllUsersForSuperAdmin)
 	group.GET("/search", u.searchUsersByName)
 }
@@ -56,7 +55,7 @@ func (u *UserCtn) RegisterEndpoints(api *gin.RouterGroup) {
 //	@Description	get a user with uuid
 //	@Tags			user
 //	@Produce		json
-//	@Success		200	{object}	dto.UserDto
+//	@Success		200	{object}	UserDto
 //	@Failure		400
 //	@Failure		404
 //	@Failure		500
@@ -210,7 +209,7 @@ func (u *UserCtn) delete(c *gin.Context) {
 //	@Description	Fetches the currently logged-in user's data based on the JWT token
 //	@Tags			user
 //	@Produce		json
-//	@Success		200	{object}	dto.UserDto
+//	@Success		200	{object}	UserDto
 //	@Failure		400
 //	@Failure		401
 //	@Failure		404
@@ -250,8 +249,8 @@ func (u *UserCtn) getLoggedInUser(c *gin.Context) {
 
 // GetAllUsers godoc
 //
-//	@Summary		Get all users for superadmin
-//	@Description	Fetches all users for superadmin
+//	@Summary		Get all users for admin
+//	@Description	Fetches all users for admin
 //	@Tags			user
 //	@Produce		json
 //	@Success		200	{array}	UserDto
@@ -267,7 +266,7 @@ func (u *UserCtn) getAllUsersForSuperAdmin(c *gin.Context) {
 		return
 	}
 
-	if claims.Role != string(ROLE_SUPER_ADMIN) {
+	if claims.Role != string(ROLE_ADMIN) {
 		u.logger.Warnf("Unauthorized access attempt by user with role: %s", claims.Role)
 		c.AbortWithStatus(http.StatusForbidden)
 		return
@@ -324,41 +323,4 @@ func (u *UserCtn) searchUsersByName(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, userDtos)
-}
-
-// GetUserByOIB godoc
-//
-//	@Summary		get user with oib
-//	@Description	get a user with oib
-//	@Tags			user
-//	@Produce		json
-//	@Success		200	{object}	UserDto
-//	@Failure		400
-//	@Failure		404
-//	@Failure		500
-//	@Param			oib	path	string	true	"user oib"
-//	@Router			/user/oib/{oib} [get]
-func (u *UserCtn) getUserByOib(c *gin.Context) {
-	oib := c.Param("oib")
-	if oib == "" {
-		u.logger.Errorf("OIB parameter is empty")
-		c.AbortWithError(http.StatusBadRequest, errors.New("OIB parameter is required"))
-		return
-	}
-
-	user, err := u.UserCrud.GetUserByOIB(oib)
-	if err != nil {
-		if errors.Is(err, ErrRecordNotFound) {
-			u.logger.Errorf("User with OIB = %s not found", oib)
-			c.AbortWithError(http.StatusNotFound, err)
-			return
-		}
-
-		u.logger.Errorf("Failed to get user with OIB = %s", oib)
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
-
-	resDto := UserDto{}
-	c.JSON(http.StatusOK, resDto.FromModel(user))
 }

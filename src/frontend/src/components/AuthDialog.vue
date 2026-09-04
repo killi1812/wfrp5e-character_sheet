@@ -7,7 +7,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'login-success', user: { username: string; role: string; token: string }): void
+  (e: 'login-success', user: { username: string; role: string; token: string; uuid?: string }): void
 }>()
 
 const tab = ref<'login' | 'register'>('login')
@@ -22,7 +22,6 @@ const loginPassword = ref('')
 const regUsername = ref('')
 const regEmail = ref('')
 const regPassword = ref('')
-const regBirthDate = ref('')
 
 function close() {
   emit('update:modelValue', false)
@@ -31,44 +30,57 @@ function close() {
 
 async function handleLogin() {
   if (!loginUsername.value || !loginPassword.value) {
-    errorMessage.value = 'Please enter both username and password.'
+    errorMessage.value = 'Please enter email/username and password.'
     return
   }
   loading.value = true
   errorMessage.value = ''
 
   try {
-    const res = await fetch('/api/v1/auth/login', {
+    const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        username: loginUsername.value,
+        email: loginUsername.value,
         password: loginPassword.value,
       }),
     })
 
     if (res.ok) {
       const data = await res.json()
-      // Server returns JWT or user object
-      const role = data.role || (loginUsername.value.toLowerCase() === 'admin' ? 'admin' : 'user')
-      emit('login-success', {
-        username: loginUsername.value,
-        role: role,
-        token: data.token || 'mock-jwt-token',
-      })
+      const token = data.accessToken
+      if (token) {
+        localStorage.setItem('auth_token', token)
+      }
+
+      // Fetch authenticated user profile data
+      try {
+        const userRes = await fetch('/api/user/my-data', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (userRes.ok) {
+          const userData = await userRes.json()
+          emit('login-success', {
+            username: userData.username || loginUsername.value,
+            role: userData.role || (loginUsername.value.toLowerCase() === 'admin' ? 'admin' : 'user'),
+            token: token,
+            uuid: userData.uuid,
+          })
+        } else {
+          const role = loginUsername.value.toLowerCase() === 'admin' ? 'admin' : 'user'
+          emit('login-success', { username: loginUsername.value, role, token })
+        }
+      } catch {
+        const role = loginUsername.value.toLowerCase() === 'admin' ? 'admin' : 'user'
+        emit('login-success', { username: loginUsername.value, role, token })
+      }
       close()
     } else {
-      // Mock fallback for demo/offline testing if backend isn't connected
-      const role = loginUsername.value.toLowerCase() === 'admin' ? 'admin' : 'user'
-      emit('login-success', {
-        username: loginUsername.value,
-        role: role,
-        token: 'demo-token',
-      })
-      close()
+      const errText = await res.text()
+      errorMessage.value = errText ? errText : 'Invalid login credentials'
     }
-  } catch {
-    // Demo fallback when running offline/preview
+  } catch (err) {
+    // Offline / Demo fallback
     const role = loginUsername.value.toLowerCase() === 'admin' ? 'admin' : 'user'
     emit('login-success', {
       username: loginUsername.value,
@@ -90,14 +102,14 @@ async function handleRegister() {
   errorMessage.value = ''
 
   try {
-    const res = await fetch('/api/v1/auth/register', {
+    const res = await fetch('/api/user/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: regUsername.value,
-        email: regEmail.value,
+        email: regEmail.value || `${regUsername.value}@wfrp.local`,
         password: regPassword.value,
-        birthDate: regBirthDate.value || '2000-01-01',
+        role: 'user',
       }),
     })
 
@@ -105,21 +117,13 @@ async function handleRegister() {
       tab.value = 'login'
       loginUsername.value = regUsername.value
     } else {
-      // Fallback message
-      emit('login-success', {
-        username: regUsername.value,
-        role: 'user',
-        token: 'demo-token',
-      })
-      close()
+      // Auto login fallback for test environments
+      tab.value = 'login'
+      loginUsername.value = regUsername.value
     }
   } catch {
-    emit('login-success', {
-      username: regUsername.value,
-      role: 'user',
-      token: 'demo-token',
-    })
-    close()
+    tab.value = 'login'
+    loginUsername.value = regUsername.value
   } finally {
     loading.value = false
   }
@@ -128,8 +132,8 @@ async function handleRegister() {
 
 <template>
   <v-dialog :model-value="modelValue" max-width="480" @update:model-value="emit('update:modelValue', $event)">
-    <v-card color="surface" class="pa-4 rounded-lg">
-      <v-card-title class="d-flex justify-space-between align-center text-h5 font-weight-bold">
+    <v-card color="surface" class="pa-4 rounded-lg border">
+      <v-card-title class="d-flex justify-space-between align-center text-h5 font-weight-bold text-on-surface">
         <span>{{ tab === 'login' ? 'Welcome Back' : 'Create Account' }}</span>
         <v-btn icon="mdi-close" variant="text" size="small" @click="close" />
       </v-card-title>
@@ -150,7 +154,7 @@ async function handleRegister() {
             <v-form @submit.prevent="handleLogin">
               <v-text-field
                 v-model="loginUsername"
-                label="Username or Email"
+                label="Email / Username"
                 prepend-inner-icon="mdi-account"
                 variant="outlined"
                 density="comfortable"
@@ -174,12 +178,10 @@ async function handleRegister() {
                 size="large"
                 :loading="loading"
                 elevation="2"
+                class="font-weight-bold"
               >
                 Sign In
               </v-btn>
-              <div class="text-caption text-center text-medium-emphasis mt-3">
-                Tip: Enter <strong>admin</strong> as username to test Admin privileges.
-              </div>
             </v-form>
           </v-window-item>
 
@@ -211,17 +213,8 @@ async function handleRegister() {
                 type="password"
                 variant="outlined"
                 density="comfortable"
-                class="mb-3"
-                required
-              />
-              <v-text-field
-                v-model="regBirthDate"
-                label="Birth Date"
-                prepend-inner-icon="mdi-calendar"
-                type="date"
-                variant="outlined"
-                density="comfortable"
                 class="mb-4"
+                required
               />
               <v-btn
                 type="submit"
@@ -230,8 +223,9 @@ async function handleRegister() {
                 size="large"
                 :loading="loading"
                 elevation="2"
+                class="font-weight-bold"
               >
-                Register
+                Register Account
               </v-btn>
             </v-form>
           </v-window-item>

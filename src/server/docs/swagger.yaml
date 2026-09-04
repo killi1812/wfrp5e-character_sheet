@@ -1,42 +1,38 @@
 definitions:
-  dto.LoginDto:
+  auth.LoginDto:
     properties:
       email:
         type: string
       password:
-        minLength: 6
         type: string
-    required:
-    - email
-    - password
     type: object
-  dto.NewUserDto:
+  auth.TokenDto:
     properties:
-      birthDate:
+      accessToken:
         type: string
+    type: object
+  info.ServerInfoDto:
+    properties:
+      build:
+        type: string
+      buildTimestamp:
+        type: string
+      commitHash:
+        type: string
+      version:
+        type: string
+    type: object
+  user.NewUserDto:
+    properties:
       email:
-        type: string
-      firstName:
-        maxLength: 100
-        minLength: 2
-        type: string
-      lastName:
-        maxLength: 100
-        minLength: 2
-        type: string
-      oib:
         type: string
       password:
         minLength: 6
-        type: string
-      residence:
-        maxLength: 255
         type: string
       role:
         enum:
         - admin
         - user
-        - superadmin
         type: string
       username:
         maxLength: 100
@@ -45,38 +41,20 @@ definitions:
       uuid:
         type: string
     required:
-    - birthDate
     - email
-    - firstName
-    - lastName
-    - oib
     - password
-    - residence
     - role
     - username
     type: object
-  dto.TokenDto:
+  user.UserDto:
     properties:
-      accessToken:
-        type: string
-    type: object
-  dto.UserDto:
-    properties:
-      birthDate:
-        type: string
       email:
-        type: string
-      firstName:
-        type: string
-      lastName:
-        type: string
-      oib:
         type: string
       policeToken:
         type: string
-      residence:
-        type: string
       role:
+        type: string
+      username:
         type: string
       uuid:
         type: string
@@ -95,28 +73,26 @@ paths:
         name: loginDto
         required: true
         schema:
-          $ref: '#/definitions/dto.LoginDto'
+          $ref: '#/definitions/auth.LoginDto'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.TokenDto'
+            $ref: '#/definitions/auth.TokenDto'
       summary: User login
       tags:
       - auth
   /auth/logout:
     post:
-      description: Generates a new access token using a valid refresh token
+      description: Logs out current user session
       produces:
       - application/json
       responses:
         "200":
           description: OK
-          schema:
-            $ref: '#/definitions/dto.TokenDto'
-      summary: Refresh Access Token
+      summary: User Logout
       tags:
       - auth
   /auth/refresh:
@@ -128,7 +104,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.TokenDto'
+            $ref: '#/definitions/auth.TokenDto'
       summary: Refresh Access Token
       tags:
       - auth
@@ -136,12 +112,12 @@ paths:
     get:
       description: return information about the server build, version, etc ...
       produces:
-      - image/png
+      - application/json
       responses:
         "200":
           description: Information about server
           schema:
-            type: struct
+            $ref: '#/definitions/info.ServerInfoDto'
       summary: Get server info
       tags:
       - info
@@ -153,14 +129,14 @@ paths:
         name: model
         required: true
         schema:
-          $ref: '#/definitions/dto.NewUserDto'
+          $ref: '#/definitions/user.NewUserDto'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/dto.UserDto'
+            $ref: '#/definitions/user.UserDto'
         "400":
           description: Bad Request
         "404":
@@ -207,7 +183,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.UserDto'
+            $ref: '#/definitions/user.UserDto'
         "400":
           description: Bad Request
         "404":
@@ -229,14 +205,14 @@ paths:
         name: model
         required: true
         schema:
-          $ref: '#/definitions/dto.UserDto'
+          $ref: '#/definitions/user.UserDto'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.UserDto'
+            $ref: '#/definitions/user.UserDto'
         "400":
           description: Bad Request
         "404":
@@ -248,7 +224,7 @@ paths:
       - user
   /user/all-users:
     get:
-      description: Fetches all users for superadmin
+      description: Fetches all users for admin
       produces:
       - application/json
       responses:
@@ -256,7 +232,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/dto.UserDto'
+              $ref: '#/definitions/user.UserDto'
             type: array
         "401":
           description: Unauthorized
@@ -264,7 +240,7 @@ paths:
           description: Forbidden
         "500":
           description: Internal Server Error
-      summary: Get all users for superadmin
+      summary: Get all users for admin
       tags:
       - user
   /user/my-data:
@@ -276,7 +252,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.UserDto'
+            $ref: '#/definitions/user.UserDto'
         "400":
           description: Bad Request
         "401":
@@ -286,31 +262,6 @@ paths:
         "500":
           description: Internal Server Error
       summary: Get logged-in user data
-      tags:
-      - user
-  /user/oib/{oib}:
-    get:
-      description: get a user with oib
-      parameters:
-      - description: user oib
-        in: path
-        name: oib
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.UserDto'
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-        "500":
-          description: Internal Server Error
-      summary: get user with oib
       tags:
       - user
   /user/search:
@@ -330,7 +281,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/dto.UserDto'
+              $ref: '#/definitions/user.UserDto'
             type: array
         "400":
           description: Bad Request
@@ -339,15 +290,4 @@ paths:
       summary: Search users by name
       tags:
       - user
-  /ws/lobby/{userId}/{clientId}:
-    get:
-      description: Web socket for lobby providing data for players
-      produces:
-      - application/json
-      responses:
-        "500":
-          description: Internal Server Error
-      summary: web socket for lobby
-      tags:
-      - lobby
 swagger: "2.0"

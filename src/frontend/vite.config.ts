@@ -8,5 +8,13 @@ export default defineConfig({
     vue(),
     vuetify({ autoImport: true }),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8090',
+        changeOrigin: true,
+      },
+    },
+  },
 })
 

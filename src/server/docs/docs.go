@@ -35,7 +35,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.LoginDto"
+                            "$ref": "#/definitions/auth.LoginDto"
                         }
                     }
                 ],
@@ -43,7 +43,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.TokenDto"
+                            "$ref": "#/definitions/auth.TokenDto"
                         }
                     }
                 }
@@ -51,20 +51,17 @@ const docTemplate = `{
         },
         "/auth/logout": {
             "post": {
-                "description": "Generates a new access token using a valid refresh token",
+                "description": "Logs out current user session",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "auth"
                 ],
-                "summary": "Refresh Access Token",
+                "summary": "User Logout",
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.TokenDto"
-                        }
+                        "description": "OK"
                     }
                 }
             }
@@ -83,7 +80,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.TokenDto"
+                            "$ref": "#/definitions/auth.TokenDto"
                         }
                     }
                 }
@@ -93,7 +90,7 @@ const docTemplate = `{
             "get": {
                 "description": "return information about the server build, version, etc ...",
                 "produces": [
-                    "image/png"
+                    "application/json"
                 ],
                 "tags": [
                     "info"
@@ -103,7 +100,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Information about server",
                         "schema": {
-                            "type": "struct"
+                            "$ref": "#/definitions/info.ServerInfoDto"
                         }
                     }
                 }
@@ -125,7 +122,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.NewUserDto"
+                            "$ref": "#/definitions/user.NewUserDto"
                         }
                     }
                 ],
@@ -133,7 +130,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/dto.UserDto"
+                            "$ref": "#/definitions/user.UserDto"
                         }
                     },
                     "400": {
@@ -150,21 +147,21 @@ const docTemplate = `{
         },
         "/user/all-users": {
             "get": {
-                "description": "Fetches all users for superadmin",
+                "description": "Fetches all users for admin",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "user"
                 ],
-                "summary": "Get all users for superadmin",
+                "summary": "Get all users for admin",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/dto.UserDto"
+                                "$ref": "#/definitions/user.UserDto"
                             }
                         }
                     },
@@ -194,7 +191,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.UserDto"
+                            "$ref": "#/definitions/user.UserDto"
                         }
                     },
                     "400": {
@@ -202,44 +199,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/user/oib/{oib}": {
-            "get": {
-                "description": "get a user with oib",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user"
-                ],
-                "summary": "get user with oib",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "user oib",
-                        "name": "oib",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.UserDto"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
                     },
                     "404": {
                         "description": "Not Found"
@@ -275,7 +234,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/dto.UserDto"
+                                "$ref": "#/definitions/user.UserDto"
                             }
                         }
                     },
@@ -311,7 +270,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.UserDto"
+                            "$ref": "#/definitions/user.UserDto"
                         }
                     },
                     "400": {
@@ -347,7 +306,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UserDto"
+                            "$ref": "#/definitions/user.UserDto"
                         }
                     }
                 ],
@@ -355,7 +314,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.UserDto"
+                            "$ref": "#/definitions/user.UserDto"
                         }
                     },
                     "400": {
@@ -402,89 +361,66 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/ws/lobby/{userId}/{clientId}": {
-            "get": {
-                "description": "Web socket for lobby providing data for players",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "lobby"
-                ],
-                "summary": "web socket for lobby",
-                "responses": {
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
         }
     },
     "definitions": {
-        "dto.LoginDto": {
+        "auth.LoginDto": {
             "type": "object",
-            "required": [
-                "email",
-                "password"
-            ],
             "properties": {
                 "email": {
                     "type": "string"
                 },
                 "password": {
-                    "type": "string",
-                    "minLength": 6
+                    "type": "string"
                 }
             }
         },
-        "dto.NewUserDto": {
+        "auth.TokenDto": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "info.ServerInfoDto": {
+            "type": "object",
+            "properties": {
+                "build": {
+                    "type": "string"
+                },
+                "buildTimestamp": {
+                    "type": "string"
+                },
+                "commitHash": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.NewUserDto": {
             "type": "object",
             "required": [
-                "birthDate",
                 "email",
-                "firstName",
-                "lastName",
-                "oib",
                 "password",
-                "residence",
                 "role",
                 "username"
             ],
             "properties": {
-                "birthDate": {
-                    "type": "string"
-                },
                 "email": {
-                    "type": "string"
-                },
-                "firstName": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 2
-                },
-                "lastName": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 2
-                },
-                "oib": {
                     "type": "string"
                 },
                 "password": {
                     "type": "string",
                     "minLength": 6
-                },
-                "residence": {
-                    "type": "string",
-                    "maxLength": 255
                 },
                 "role": {
                     "type": "string",
                     "enum": [
                         "admin",
-                        "user",
-                        "superadmin"
+                        "user"
                     ]
                 },
                 "username": {
@@ -497,39 +433,19 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.TokenDto": {
+        "user.UserDto": {
             "type": "object",
             "properties": {
-                "accessToken": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.UserDto": {
-            "type": "object",
-            "properties": {
-                "birthDate": {
-                    "type": "string"
-                },
                 "email": {
-                    "type": "string"
-                },
-                "firstName": {
-                    "type": "string"
-                },
-                "lastName": {
-                    "type": "string"
-                },
-                "oib": {
                     "type": "string"
                 },
                 "policeToken": {
                     "type": "string"
                 },
-                "residence": {
+                "role": {
                     "type": "string"
                 },
-                "role": {
+                "username": {
                     "type": "string"
                 },
                 "uuid": {

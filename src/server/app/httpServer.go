@@ -100,6 +100,9 @@ func run(ctx context.Context, wg *sync.WaitGroup) {
 	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
 		staticDir = "./dist"
 	}
+	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
+		staticDir = "../frontend/dist"
+	}
 	if _, err := os.Stat(staticDir); err == nil {
 		zap.S().Infof("Serving static frontend from %s", staticDir)
 		router.NoRoute(func(c *gin.Context) {

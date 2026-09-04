@@ -11,43 +11,75 @@ function toggleTheme() {
   theme.global.name.value = isDark.value ? 'wfrpLight' : 'wfrpDark'
 }
 
+// User & Auth State
+const currentUser = ref<{ username: string; role: string; token: string; uuid?: string } | null>(null)
+const showAuthDialog = ref(false)
+const showKebabOverlay = ref(false)
+
 // Page Navigation View State ('sheet' | 'admin')
 const currentPage = ref<'sheet' | 'admin'>('sheet')
 
-onMounted(() => {
-  if (window.location.hash === '#/admin') {
+onMounted(async () => {
+  if (window.location.pathname === '/admin') {
     currentPage.value = 'admin'
   }
-  window.addEventListener('hashchange', () => {
-    currentPage.value = window.location.hash === '#/admin' ? 'admin' : 'sheet'
+  window.addEventListener('popstate', () => {
+    currentPage.value = window.location.pathname === '/admin' ? 'admin' : 'sheet'
   })
+
+  // Restore authenticated session from localStorage if present
+  const storedToken = localStorage.getItem('auth_token')
+  if (storedToken) {
+    try {
+      const res = await fetch('/api/user/my-data', {
+        headers: { Authorization: `Bearer ${storedToken}` },
+      })
+      if (res.ok) {
+        const userData = await res.json()
+        currentUser.value = {
+          username: userData.username,
+          role: userData.role || 'user',
+          token: storedToken,
+          uuid: userData.uuid,
+        }
+      } else {
+        localStorage.removeItem('auth_token')
+      }
+    } catch {
+      // offline / demo state fallback
+    }
+  }
 })
 
 function navigateTo(page: 'sheet' | 'admin') {
   currentPage.value = page
-  window.location.hash = page === 'admin' ? '#/admin' : '#/'
+  const targetPath = page === 'admin' ? '/admin' : '/'
+  if (window.location.pathname !== targetPath) {
+    window.history.pushState({}, '', targetPath)
+  }
   showKebabOverlay.value = false
 }
 
-// User & Auth State
-const currentUser = ref<{ username: string; role: string; token: string } | null>(null)
-const showAuthDialog = ref(false)
-const showKebabOverlay = ref(false)
-
-function onLoginSuccess(user: { username: string; role: string; token: string }) {
+function onLoginSuccess(user: { username: string; role: string; token: string; uuid?: string }) {
   currentUser.value = user
 }
 
-function logout() {
+async function logout() {
+  if (currentUser.value?.token && currentUser.value.token !== 'demo-token') {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${currentUser.value.token}` },
+      })
+    } catch {
+      // ignore network errors on logout
+    }
+  }
+  localStorage.removeItem('auth_token')
   currentUser.value = null
 }
 
 const isAdmin = computed(() => currentUser.value?.role === 'admin')
-
-function printPage() {
-  showKebabOverlay.value = false
-  window.print()
-}
 
 // WFRP 5e Character Sheet Reactive Model (Faithful to PDF)
 const character = ref({
@@ -348,12 +380,6 @@ function removeMutation(index: number) {
             :title="isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'"
             class="mb-2 rounded-lg bg-surface-variant border"
             @click="toggleTheme"
-          />
-          <v-list-item
-            prepend-icon="mdi-printer"
-            title="Print / Export PDF Sheet"
-            class="mb-2 rounded-lg bg-surface-variant border"
-            @click="printPage"
           />
 
           <!-- Admin Panel Button (If logged in as Admin) -->
