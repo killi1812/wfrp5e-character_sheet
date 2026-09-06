@@ -361,6 +361,9 @@
                 },
                 "password": {
                     "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -392,7 +395,6 @@
         "user.NewUserDto": {
             "type": "object",
             "required": [
-                "email",
                 "password",
                 "role",
                 "username"

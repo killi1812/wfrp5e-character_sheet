@@ -1,7 +1,8 @@
 package auth
 
 type LoginDto struct {
-	Email    string `json:"email"`
+	Username string `json:"username"`
+	Email    string `json:"email,omitempty"`
 	Password string `json:"password"`
 }
 

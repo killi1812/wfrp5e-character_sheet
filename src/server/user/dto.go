@@ -12,7 +12,7 @@ import (
 type NewUserDto struct {
 	Uuid     string `json:"uuid"`
 	Username string `json:"username" binding:"required,min=2,max=100"`
-	Email    string `json:"email" binding:"required,email"`
+	Email    string `json:"email" binding:"omitempty,email"`
 	Password string `json:"password" binding:"required,min=6"`
 	Role     string `json:"role" binding:"required,oneof=admin user"`
 }

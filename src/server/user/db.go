@@ -135,6 +135,15 @@ func (u *UserCrudService) Update(userUuid uuid.UUID, user *User) (*User, error) 
 }
 
 func (u *UserCrudService) Create(user *User, password string) (*User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var existing User
+	err := u.usersColl().FindOne(ctx, bson.M{"username": user.Username}).Decode(&existing)
+	if err == nil {
+		return nil, errors.New("username already exists")
+	}
+
 	hash, err := auth.HashPassword(password)
 	if err != nil {
 		return nil, err
@@ -147,11 +156,6 @@ func (u *UserCrudService) Create(user *User, password string) (*User, error) {
 	if user.CreatedAt.IsZero() {
 		user.CreatedAt = time.Now()
 	}
-	user.UpdatedAt = time.Now()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	res, err := u.usersColl().InsertOne(ctx, user)
 	if err != nil {
 		return nil, err

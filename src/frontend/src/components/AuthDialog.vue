@@ -41,7 +41,7 @@ async function handleLogin() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: loginUsername.value,
+        username: loginUsername.value,
         password: loginPassword.value,
       }),
     })
@@ -107,7 +107,7 @@ async function handleRegister() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: regUsername.value,
-        email: regEmail.value || `${regUsername.value}@wfrp.local`,
+        email: regEmail.value || undefined,
         password: regPassword.value,
         role: 'user',
       }),
@@ -154,7 +154,7 @@ async function handleRegister() {
             <v-form @submit.prevent="handleLogin">
               <v-text-field
                 v-model="loginUsername"
-                label="Email / Username"
+                label="Username"
                 prepend-inner-icon="mdi-account"
                 variant="outlined"
                 density="comfortable"
@@ -199,7 +199,7 @@ async function handleRegister() {
               />
               <v-text-field
                 v-model="regEmail"
-                label="Email Address"
+                label="Email Address (Optional)"
                 prepend-inner-icon="mdi-email"
                 type="email"
                 variant="outlined"

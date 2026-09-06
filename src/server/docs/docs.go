@@ -372,6 +372,9 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -403,7 +406,6 @@ const docTemplate = `{
         "user.NewUserDto": {
             "type": "object",
             "required": [
-                "email",
                 "password",
                 "role",
                 "username"

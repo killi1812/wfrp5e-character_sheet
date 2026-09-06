@@ -18,7 +18,7 @@ import (
 )
 
 type IAuthService interface {
-	Login(email, password string) (string, error)
+	Login(identifier, password string) (string, error)
 	RefreshTokens(accessToken string) (string, error)
 	Logout(userUuid string) error
 }
@@ -49,20 +49,20 @@ func (s *AuthService) sessionsColl() *mongo.Collection {
 	return s.db.Collection("sessions")
 }
 
-func (s *AuthService) Login(email, password string) (string, error) {
+func (s *AuthService) Login(identifier, password string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var usr user.User
 	err := s.usersColl().FindOne(ctx, bson.M{
 		"$or": []bson.M{
-			{"email": email},
-			{"username": email},
+			{"username": identifier},
+			{"email": identifier},
 		},
 	}).Decode(&usr)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			s.logger.Debugf("User not found Email = %s", email)
+			s.logger.Debugf("User not found Identifier = %s", identifier)
 			return "", cerror.ErrInvalidCredentials
 		}
 		s.logger.Errorf("Failed to query user, error = %+v", err)
