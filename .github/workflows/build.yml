@@ -24,7 +24,7 @@ jobs:
         uses: arduino/setup-task@v2
 
       - name: SetupEnv
-        run: cp env.example .env
+        run: cp example.env .env
 
       - name: Build
         run: task build
