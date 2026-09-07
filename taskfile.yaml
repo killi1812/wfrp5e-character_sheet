@@ -106,6 +106,26 @@ tasks:
     silent: false
     internal: false
 
+  lint:
+    desc: "Lint and type-check frontend and backend syntax"
+    cmds:
+      - task: lint-frontend
+      - task: lint-backend
+
+  lint-frontend:
+    desc: "Type-check frontend Vue/TypeScript code"
+    dir: "./{{.PROJECT_DIR}}/frontend"
+    cmds:
+      - cmd: npx vue-tsc -b
+    silent: false
+
+  lint-backend:
+    desc: "Vet Go backend code"
+    dir: "src/server"
+    cmds:
+      - cmd: go vet ./...
+    silent: false
+
   generate-swagger:
     desc: "Generate swagger documentation"
     dir: "src/server"

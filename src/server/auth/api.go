@@ -54,12 +54,7 @@ func (l *AuthCtn) login(c *gin.Context) {
 		return
 	}
 
-	identifier := loginDto.Username
-	if identifier == "" {
-		identifier = loginDto.Email
-	}
-
-	accessToken, err := l.auth.Login(identifier, loginDto.Password)
+	accessToken, err := l.auth.Login(loginDto.Username, loginDto.Password)
 	if err != nil {
 		l.logger.Errorf("Login failed err = %+v", err)
 		c.JSON(http.StatusUnauthorized, err.Error())
