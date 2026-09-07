@@ -19,6 +19,7 @@ const showKebabOverlay = ref(false)
 
 // Page Navigation View State ('sheet' | 'admin')
 const currentPage = ref<'sheet' | 'admin'>('sheet')
+const sheetRef = ref<InstanceType<typeof CharacterSheetPage> | null>(null)
 
 onMounted(async () => {
   if (window.location.pathname === '/admin') {
@@ -145,6 +146,36 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
             @click="navigateTo('admin')"
           />
 
+          <!-- Sheet Actions (when viewing character sheet) -->
+          <template v-if="currentPage === 'sheet'">
+            <v-divider class="my-3" />
+            <div class="text-caption font-weight-bold text-primary mb-2 text-uppercase">Sheet Actions</div>
+
+            <v-list-item
+              prepend-icon="mdi-content-save"
+              title="Save Character Sheet"
+              subtitle="Save current changes"
+              class="mb-2 rounded-lg bg-surface-variant border"
+              @click="sheetRef?.saveSheet(); showKebabOverlay = false"
+            />
+
+            <v-list-item
+              prepend-icon="mdi-file-plus-outline"
+              title="New Blank Sheet"
+              subtitle="Start with a blank sheet"
+              class="mb-2 rounded-lg bg-surface-variant border"
+              @click="sheetRef?.newBlankSheet(); showKebabOverlay = false"
+            />
+
+            <v-list-item
+              prepend-icon="mdi-database-import"
+              title="Load Demo Character"
+              subtitle="Gottfried von Altdorf (Wizard)"
+              class="mb-2 rounded-lg bg-surface-variant border"
+              @click="sheetRef?.loadMockData(); showKebabOverlay = false"
+            />
+          </template>
+
           <!-- Auth Button -->
           <v-list-item
             v-if="!currentUser"
@@ -166,7 +197,7 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
     <!-- PAGE CONDITIONAL RENDERING -->
     <template v-if="currentPage === 'sheet'">
-      <CharacterSheetPage />
+      <CharacterSheetPage ref="sheetRef" />
     </template>
 
     <!-- STANDALONE ADMIN PAGE VIEW -->

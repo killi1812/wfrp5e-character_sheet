@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { CharacterModel } from '../../constants/placeholders'
+import SectionCard from '../ui/SectionCard.vue'
+import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
+import SinCounter from '../ui/SinCounter.vue'
 
 defineProps<{
   character: CharacterModel
@@ -15,68 +18,95 @@ const emit = defineEmits<{
 
 <template>
   <v-row dense class="mb-4">
-    <!-- Spells / Prayers -->
+    <!-- Spells & Prayers -->
     <v-col cols="12" md="8">
-      <v-card color="surface" elevation="2" class="pa-4 rounded-lg border h-100">
-        <div class="d-flex justify-space-between align-center mb-2">
-          <div class="text-subtitle-2 font-weight-black text-uppercase text-primary">Spells & Incantations</div>
-          <v-btn color="primary" size="x-small" prepend-icon="mdi-plus" variant="tonal" @click="emit('addSpell')">
-            Add Spell
-          </v-btn>
+      <SectionCard title="Spells & Prayers" add-label="Add Spell / Prayer" full-height @add="emit('addSpell')">
+        <!-- Sin Counter Widget row -->
+        <div class="d-flex justify-end align-center mb-2">
+          <SinCounter v-model="character.sin" />
         </div>
+
         <v-table density="compact" class="bg-transparent text-caption">
           <thead>
             <tr>
-              <th>Spell Name</th>
-              <th class="text-center">CN</th>
-              <th>Range</th>
-              <th>Target</th>
-              <th>Duration</th>
-              <th class="text-right">Action</th>
+              <th>Name</th>
+              <th class="text-center" style="width: 50px;">CN</th>
+              <th style="width: 90px;">Range</th>
+              <th style="width: 90px;">Target</th>
+              <th style="width: 90px;">Duration</th>
+              <th class="text-right" style="width: 40px;">Action</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(spell, idx) in character.spells" :key="idx">
-              <td><v-text-field v-model="spell.name" variant="plain" density="compact" hide-details /></td>
-              <td style="max-width: 50px;"><v-text-field v-model.number="spell.cn" type="number" variant="plain" density="compact" hide-details class="text-center" /></td>
-              <td style="max-width: 90px;"><v-text-field v-model="spell.range" variant="plain" density="compact" hide-details /></td>
-              <td style="max-width: 90px;"><v-text-field v-model="spell.target" variant="plain" density="compact" hide-details /></td>
-              <td style="max-width: 90px;"><v-text-field v-model="spell.duration" variant="plain" density="compact" hide-details /></td>
-              <td class="text-right"><v-btn icon="mdi-delete" size="x-small" color="error" variant="text" @click="emit('removeSpell', idx)" /></td>
+              <td><v-text-field v-model="spell.name" variant="plain" density="compact" hide-details placeholder="Spell / Prayer Name" /></td>
+              <td style="max-width: 50px;"><v-text-field v-model.number="spell.cn" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" /></td>
+              <td style="max-width: 90px;"><v-text-field v-model="spell.range" variant="plain" density="compact" hide-details placeholder="12 yards" /></td>
+              <td style="max-width: 90px;"><v-text-field v-model="spell.target" variant="plain" density="compact" hide-details placeholder="1 Target" /></td>
+              <td style="max-width: 90px;"><v-text-field v-model="spell.duration" variant="plain" density="compact" hide-details placeholder="Instant" /></td>
+              <td class="text-right"><DeleteRowBtn @delete="emit('removeSpell', idx)" /></td>
             </tr>
           </tbody>
         </v-table>
-      </v-card>
+      </SectionCard>
     </v-col>
 
     <!-- Corruption & Mutations -->
     <v-col cols="12" md="4">
-      <v-card color="surface" elevation="2" class="pa-4 rounded-lg border h-100">
-        <div class="text-subtitle-2 font-weight-black text-uppercase text-primary mb-2">Corruption & Mutations</div>
+      <SectionCard title="Corruption & Mutations" full-height>
         <v-row dense class="mb-3">
           <v-col cols="6">
-            <v-text-field v-model.number="character.corruption.current" label="Corruption" type="number" variant="outlined" density="compact" hide-details />
+            <v-text-field v-model.number="character.corruption.current" label="Current Corruption" type="number" variant="outlined" density="compact" hide-details placeholder="0" />
           </v-col>
           <v-col cols="6">
-            <v-text-field v-model.number="character.sin" label="Sin Points" type="number" variant="outlined" density="compact" hide-details />
+            <v-text-field v-model.number="character.corruption.max" label="Max Threshold" type="number" variant="outlined" density="compact" hide-details placeholder="0" />
           </v-col>
         </v-row>
 
-        <div class="d-flex justify-space-between align-center mb-1">
-          <span class="text-caption font-weight-bold">Mutations:</span>
+        <div class="d-flex justify-space-between align-center mb-2">
+          <span class="text-caption font-weight-bold text-primary">Mutations:</span>
           <v-btn icon="mdi-plus" size="x-small" color="primary" variant="text" @click="emit('addMutation')" />
         </div>
 
-        <v-list density="compact" class="bg-transparent pa-0">
-          <v-list-item v-for="(mut, idx) in character.mutations" :key="idx" class="px-2 py-1 rounded mb-1 bg-surface-variant border">
-            <div class="d-flex justify-space-between align-center">
-              <div class="text-caption font-weight-bold">{{ mut.name }}</div>
-              <v-btn icon="mdi-delete" size="x-small" color="error" variant="text" @click="emit('removeMutation', idx)" />
-            </div>
-            <div class="text-caption text-medium-emphasis">{{ mut.effect }}</div>
-          </v-list-item>
-        </v-list>
-      </v-card>
+        <div v-if="character.mutations.length === 0" class="text-caption text-medium-emphasis font-italic py-2 text-center">
+          No mutations recorded.
+        </div>
+
+        <div v-for="(mut, idx) in character.mutations" :key="idx" class="mutation-card pa-2 rounded mb-2 bg-surface-variant border">
+          <div class="d-flex justify-space-between align-center mb-1">
+            <input
+              v-model="mut.name"
+              type="text"
+              class="mutation-input font-weight-bold text-caption"
+              placeholder="Mutation Name"
+            />
+            <DeleteRowBtn @delete="emit('removeMutation', idx)" />
+          </div>
+          <input
+            v-model="mut.effect"
+            type="text"
+            class="mutation-input text-caption text-medium-emphasis"
+            placeholder="Effect / Description"
+          />
+        </div>
+      </SectionCard>
     </v-col>
   </v-row>
 </template>
+
+<style scoped>
+.mutation-card {
+  transition: border-color 0.2s;
+}
+.mutation-card:focus-within {
+  border-color: rgb(var(--v-theme-primary)) !important;
+}
+
+.mutation-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: currentColor;
+}
+</style>

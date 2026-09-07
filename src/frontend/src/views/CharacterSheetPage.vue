@@ -4,10 +4,12 @@ import {
   DEFAULT_CHARACTER,
   DEFAULT_BASIC_SKILLS,
   DEFAULT_ADVANCED_SKILLS,
+  DEFAULT_LANGUAGES,
   NEW_ITEM_TEMPLATES,
   type CharacterModel,
   type Skill
 } from '../constants/placeholders'
+import { characterApi } from '../services/characterApi'
 
 import SheetHeaderBlock from '../components/sheet/SheetHeaderBlock.vue'
 import SheetCharacteristicsBlock from '../components/sheet/SheetCharacteristicsBlock.vue'
@@ -22,9 +24,16 @@ import SheetAmbitionsNotesBlock from '../components/sheet/SheetAmbitionsNotesBlo
 // WFRP 5e Character Sheet Reactive Model
 const character = ref<CharacterModel>(JSON.parse(JSON.stringify(DEFAULT_CHARACTER)))
 
-// Basic & Advanced Skills
+// Basic & Advanced Skills & Languages
 const basicSkills = ref<Skill[]>(JSON.parse(JSON.stringify(DEFAULT_BASIC_SKILLS)))
 const advancedSkills = ref<Skill[]>(JSON.parse(JSON.stringify(DEFAULT_ADVANCED_SKILLS)))
+const languages = ref<Skill[]>(JSON.parse(JSON.stringify(DEFAULT_LANGUAGES)))
+
+// API & Mock State
+const isSaving = ref(false)
+const saveSnackbar = ref(false)
+const snackbarMessage = ref('')
+const currentSheetUuid = ref<string | undefined>(undefined)
 
 // Formulas
 const getCharCurrent = (code: string) => {
@@ -62,7 +71,50 @@ const computedTotalEnc = computed(() => {
   return total
 })
 
-// Add / Remove Row Handlers for Advanced Skills & items
+// API / Mock Actions
+async function saveSheet() {
+  isSaving.value = true
+  try {
+    const res = await characterApi.saveCharacter({
+      character: character.value,
+      basicSkills: basicSkills.value,
+      advancedSkills: advancedSkills.value,
+      languages: languages.value,
+    }, currentSheetUuid.value)
+    currentSheetUuid.value = res.uuid
+    snackbarMessage.value = 'Character sheet saved successfully!'
+    saveSnackbar.value = true
+  } catch {
+    snackbarMessage.value = 'Error saving sheet'
+    saveSnackbar.value = true
+  } finally {
+    isSaving.value = false
+  }
+}
+
+function loadMockData() {
+  const mock = characterApi.getMockData()
+  character.value = mock.character
+  basicSkills.value = mock.basicSkills
+  advancedSkills.value = mock.advancedSkills
+  languages.value = mock.languages
+  currentSheetUuid.value = 'mock-gottfried'
+  snackbarMessage.value = 'Loaded demo character (Gottfried von Altdorf)!'
+  saveSnackbar.value = true
+}
+
+function newBlankSheet() {
+  const blank = characterApi.getBlankData()
+  character.value = blank.character
+  basicSkills.value = blank.basicSkills
+  advancedSkills.value = blank.advancedSkills
+  languages.value = blank.languages
+  currentSheetUuid.value = undefined
+  snackbarMessage.value = 'New blank character sheet ready.'
+  saveSnackbar.value = true
+}
+
+// Add / Remove Row Handlers for Advanced Skills, Languages & items
 function addAdvancedSkill() {
   advancedSkills.value.push(NEW_ITEM_TEMPLATES.advancedSkill())
 }
@@ -71,20 +123,20 @@ function removeAdvancedSkill(index: number) {
   advancedSkills.value.splice(index, 1)
 }
 
+function addLanguage() {
+  languages.value.push(NEW_ITEM_TEMPLATES.language())
+}
+
+function removeLanguage(index: number) {
+  languages.value.splice(index, 1)
+}
+
 function addTalent() {
   character.value.talents.push(NEW_ITEM_TEMPLATES.talent())
 }
 
 function removeTalent(index: number) {
   character.value.talents.splice(index, 1)
-}
-
-function addLanguage() {
-  character.value.languages.push(NEW_ITEM_TEMPLATES.language())
-}
-
-function removeLanguage(index: number) {
-  character.value.languages.splice(index, 1)
 }
 
 function addWeapon() {
@@ -126,10 +178,17 @@ function addMutation() {
 function removeMutation(index: number) {
   character.value.mutations.splice(index, 1)
 }
+
+defineExpose({
+  saveSheet,
+  newBlankSheet,
+  loadMockData,
+})
 </script>
 
 <template>
   <main class="wfrp-sheet-body pa-3 pa-md-5">
+
     <SheetHeaderBlock :character="character" />
     <SheetCharacteristicsBlock :character="character" :get-char-current="getCharCurrent" />
     <SheetVitalsBlock
@@ -147,7 +206,8 @@ function removeMutation(index: number) {
     />
     <SheetTalentsBlock
       :talents="character.talents"
-      :languages="character.languages"
+      :languages="languages"
+      :get-char-current="getCharCurrent"
       @add-talent="addTalent"
       @remove-talent="removeTalent"
       @add-language="addLanguage"
@@ -155,6 +215,7 @@ function removeMutation(index: number) {
     />
     <SheetWeaponsBlock
       :weapons="character.weapons"
+      :get-char-bonus="getCharBonus"
       @add-weapon="addWeapon"
       @remove-weapon="removeWeapon"
     />
@@ -177,5 +238,17 @@ function removeMutation(index: number) {
       @remove-mutation="removeMutation"
     />
     <SheetAmbitionsNotesBlock :character="character" />
+
+    <!-- Feedback Snackbar -->
+    <v-snackbar v-model="saveSnackbar" :timeout="2500" color="surface" location="bottom end" class="border">
+      <div class="d-flex align-center">
+        <v-icon icon="mdi-check-circle" color="success" class="mr-2" />
+        <span class="text-body-2 font-weight-bold">{{ snackbarMessage }}</span>
+      </div>
+    </v-snackbar>
   </main>
 </template>
+
+<style scoped>
+.gap-2 { gap: 8px; }
+</style>
