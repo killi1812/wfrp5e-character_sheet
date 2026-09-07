@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTheme } from 'vuetify'
 import AuthDialog from './components/AuthDialog.vue'
 import AdminPage from './views/AdminPage.vue'
@@ -21,7 +21,18 @@ const showKebabOverlay = ref(false)
 const currentPage = ref<'sheet' | 'admin'>('sheet')
 const sheetRef = ref<InstanceType<typeof CharacterSheetPage> | null>(null)
 
+function handleGlobalKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    if (currentPage.value === 'sheet') {
+      e.preventDefault()
+      sheetRef.value?.saveSheet()
+    }
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener('keydown', handleGlobalKeydown)
+
   if (window.location.pathname === '/admin') {
     currentPage.value = 'admin'
   }
@@ -51,6 +62,10 @@ onMounted(async () => {
       // offline / demo state fallback
     }
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 
 function navigateTo(page: 'sheet' | 'admin') {
@@ -154,7 +169,7 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
             <v-list-item
               prepend-icon="mdi-content-save"
               title="Save Character Sheet"
-              subtitle="Save current changes"
+              subtitle="Save current changes (Ctrl+S)"
               class="mb-2 rounded-lg bg-surface-variant border"
               @click="sheetRef?.saveSheet(); showKebabOverlay = false"
             />

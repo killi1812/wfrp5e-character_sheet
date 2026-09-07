@@ -19,6 +19,20 @@ export interface CharacterSheetPayload {
   languages: Skill[]
 }
 
+export const GUEST_STORAGE_KEY = 'wfrp_guest_character_sheet'
+
+export interface GuestSheetStorage {
+  version: 1
+  updatedAt: string
+  payload: CharacterSheetPayload
+}
+
+export interface SaveCharacterResult {
+  success: boolean
+  uuid: string
+  mode: 'cloud' | 'local'
+}
+
 export interface CharacterSheetSummary {
   uuid: string
   name: string
@@ -33,6 +47,49 @@ class CharacterApiService {
   private getAuthHeader(): Record<string, string> {
     const token = localStorage.getItem('auth_token')
     return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
+  /**
+   * Check whether user currently holds an active auth token
+   */
+  isAuthenticated(): boolean {
+    return Boolean(localStorage.getItem('auth_token'))
+  }
+
+  /**
+   * Load guest character sheet from browser localStorage
+   */
+  loadGuestSheet(): CharacterSheetPayload | null {
+    try {
+      const raw = localStorage.getItem(GUEST_STORAGE_KEY)
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as GuestSheetStorage
+      if (parsed && parsed.payload) {
+        return parsed.payload
+      }
+    } catch (err) {
+      console.warn('Failed to parse guest character sheet from localStorage:', err)
+    }
+    return null
+  }
+
+  /**
+   * Save guest character sheet into browser localStorage (Guest mode only)
+   */
+  saveGuestSheet(payload: CharacterSheetPayload): void {
+    const data: GuestSheetStorage = {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      payload,
+    }
+    localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(data))
+  }
+
+  /**
+   * Purge guest character sheet from browser localStorage
+   */
+  clearGuestSheet(): void {
+    localStorage.removeItem(GUEST_STORAGE_KEY)
   }
 
   /**
@@ -60,10 +117,10 @@ class CharacterApiService {
   }
 
   /**
-   * Fetch a character sheet by UUID, or returns cached / mock data
+   * Fetch a character sheet by UUID, or returns guest / mock / blank data
    */
   async getCharacter(uuid?: string): Promise<CharacterSheetPayload> {
-    if (uuid && uuid !== 'demo' && uuid !== 'mock') {
+    if (this.isAuthenticated() && uuid && uuid !== 'demo' && uuid !== 'mock') {
       try {
         const response = await fetch(`${this.baseUrl}/${uuid}`, {
           headers: {
@@ -76,54 +133,57 @@ class CharacterApiService {
           return this.adaptFromBackend(data)
         }
       } catch (err) {
-        console.warn('API fetch failed, falling back to local/mock store:', err)
-      }
-
-      // Check localStorage cache
-      const cached = localStorage.getItem(`sheet_${uuid}`)
-      if (cached) {
-        try {
-          return JSON.parse(cached)
-        } catch {
-          // ignore parse error
-        }
+        console.warn('API fetch failed:', err)
       }
     }
 
-    // Default to mock data when no UUID or in offline/demo mode
-    return this.getMockData()
+    // When not logged in, retrieve guest sheet if present
+    if (!this.isAuthenticated()) {
+      const guest = this.loadGuestSheet()
+      if (guest) {
+        return guest
+      }
+    }
+
+    // Default to mock data when explicitly requested
+    if (uuid === 'demo' || uuid === 'mock') {
+      return this.getMockData()
+    }
+
+    return this.getBlankData()
   }
 
   /**
-   * Save character sheet to backend API (or localStorage fallback)
+   * Save character sheet.
+   * If logged in: Saves strictly to backend API, and purges localStorage.
+   * If not logged in: Saves to browser localStorage (Guest Mode).
    */
-  async saveCharacter(payload: CharacterSheetPayload, uuid?: string): Promise<{ success: boolean; uuid: string }> {
-    const targetUuid = uuid || (window.crypto?.randomUUID ? window.crypto.randomUUID() : `sheet_${Date.now()}`)
-
-    try {
-      const response = await fetch(`${this.baseUrl}/${uuid ? uuid : ''}`, {
-        method: uuid ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getAuthHeader(),
-        },
-        body: JSON.stringify(this.adaptToBackend(payload, targetUuid)),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        return { success: true, uuid: result.uuid || targetUuid }
-      }
-    } catch (err) {
-      console.warn('Backend save failed, saving to local cache:', err)
+  async saveCharacter(payload: CharacterSheetPayload, uuid?: string): Promise<SaveCharacterResult> {
+    if (!this.isAuthenticated()) {
+      this.saveGuestSheet(payload)
+      return { success: true, uuid: 'guest', mode: 'local' }
     }
 
-    // Fallback: Cache in localStorage
-    localStorage.setItem(`sheet_${targetUuid}`, JSON.stringify(payload))
-    // Simulate brief API latency
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    // Authenticated user: Save strictly to cloud API, never cache in localStorage
+    const targetUuid = uuid || (window.crypto?.randomUUID ? window.crypto.randomUUID() : `sheet_${Date.now()}`)
+    const response = await fetch(`${this.baseUrl}/${uuid ? uuid : ''}`, {
+      method: uuid ? 'PUT' : 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeader(),
+      },
+      body: JSON.stringify(this.adaptToBackend(payload, targetUuid)),
+    })
 
-    return { success: true, uuid: targetUuid }
+    if (!response.ok) {
+      throw new Error(`Failed to save character to server: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    // Remove local storage data to keep sheet solely on the server
+    this.clearGuestSheet()
+
+    return { success: true, uuid: result.uuid || targetUuid, mode: 'cloud' }
   }
 
   /**

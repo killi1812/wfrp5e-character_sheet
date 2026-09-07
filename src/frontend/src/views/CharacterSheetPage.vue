@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   DEFAULT_CHARACTER,
   DEFAULT_BASIC_SKILLS,
@@ -34,6 +34,19 @@ const isSaving = ref(false)
 const saveSnackbar = ref(false)
 const snackbarMessage = ref('')
 const currentSheetUuid = ref<string | undefined>(undefined)
+
+onMounted(() => {
+  // Restore guest character sheet from browser localStorage if unauthenticated
+  if (!characterApi.isAuthenticated()) {
+    const guestData = characterApi.loadGuestSheet()
+    if (guestData) {
+      character.value = guestData.character
+      basicSkills.value = guestData.basicSkills
+      advancedSkills.value = guestData.advancedSkills
+      languages.value = guestData.languages
+    }
+  }
+})
 
 // Formulas
 const getCharCurrent = (code: string) => {
@@ -81,8 +94,16 @@ async function saveSheet() {
       advancedSkills: advancedSkills.value,
       languages: languages.value,
     }, currentSheetUuid.value)
-    currentSheetUuid.value = res.uuid
-    snackbarMessage.value = 'Character sheet saved successfully!'
+
+    if (res.uuid && res.uuid !== 'guest') {
+      currentSheetUuid.value = res.uuid
+    }
+
+    if (res.mode === 'cloud') {
+      snackbarMessage.value = 'Character sheet saved to cloud account!'
+    } else {
+      snackbarMessage.value = 'Character sheet saved to browser storage!'
+    }
     saveSnackbar.value = true
   } catch {
     snackbarMessage.value = 'Error saving sheet'
@@ -110,6 +131,9 @@ function newBlankSheet() {
   advancedSkills.value = blank.advancedSkills
   languages.value = blank.languages
   currentSheetUuid.value = undefined
+  if (!characterApi.isAuthenticated()) {
+    characterApi.clearGuestSheet()
+  }
   snackbarMessage.value = 'New blank character sheet ready.'
   saveSnackbar.value = true
 }
