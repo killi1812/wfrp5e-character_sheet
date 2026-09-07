@@ -44,7 +44,7 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
               <td class="text-right font-weight-black">
                 <v-tooltip text="Skill Total = Characteristic + Advances" location="right">
                   <template #activator="{ props: tProps }">
-                    <span v-bind="tProps" class="skill-total-badge text-primary">
+                    <span v-bind="tProps" class="skill-total-badge text-high-emphasis">
                       {{ getSkillTotal(skill) }}
                     </span>
                   </template>
@@ -75,7 +75,7 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
                 <input v-model="skill.name" type="text" class="skill-text-input font-weight-medium" placeholder="Skill Name" />
               </td>
               <td class="text-center">
-                <input v-model="skill.characteristic" type="text" class="skill-char-input font-weight-bold text-secondary text-uppercase" placeholder="Int" />
+                <input v-model="skill.characteristic" type="text" class="skill-char-input font-weight-bold text-primary text-uppercase" placeholder="Int" />
               </td>
               <td class="text-center">
                 <input v-model.number="skill.adv" type="number" class="skill-num-input font-weight-medium" placeholder="0" />
@@ -83,7 +83,7 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
               <td class="text-right font-weight-black">
                 <v-tooltip text="Skill Total = Characteristic + Advances" location="right">
                   <template #activator="{ props: tProps }">
-                    <span v-bind="tProps" class="skill-total-badge text-secondary">
+                    <span v-bind="tProps" class="skill-total-badge text-high-emphasis">
                       {{ getSkillTotal(skill) }}
                     </span>
                   </template>
@@ -147,6 +147,7 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
   display: inline-block;
   padding: 2px 8px;
   background: rgba(var(--v-theme-surface), 0.8);
+  color: rgb(var(--v-theme-on-surface)) !important;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-radius: 4px;
   font-weight: 700;

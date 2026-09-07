@@ -29,21 +29,35 @@ const emit = defineEmits<{
         <v-table density="compact" class="bg-transparent text-caption">
           <thead>
             <tr>
-              <th>Name</th>
-              <th class="text-center" style="width: 50px;">CN</th>
-              <th style="width: 90px;">Range</th>
-              <th style="width: 90px;">Target</th>
-              <th style="width: 90px;">Duration</th>
+              <th style="width: 200px;">Name</th>
+              <th class="text-center" style="width: 45px;">CN</th>
+              <th style="width: 100px;">Range</th>
+              <th style="width: 100px;">Target</th>
+              <th style="width: 100px;">Duration</th>
+              <th>Description / Effect</th>
               <th class="text-right" style="width: 40px;">Action</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(spell, idx) in character.spells" :key="idx">
-              <td><v-text-field v-model="spell.name" variant="plain" density="compact" hide-details placeholder="Spell / Prayer Name" /></td>
-              <td style="max-width: 50px;"><v-text-field v-model.number="spell.cn" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" /></td>
-              <td style="max-width: 90px;"><v-text-field v-model="spell.range" variant="plain" density="compact" hide-details placeholder="12 yards" /></td>
-              <td style="max-width: 90px;"><v-text-field v-model="spell.target" variant="plain" density="compact" hide-details placeholder="1 Target" /></td>
-              <td style="max-width: 90px;"><v-text-field v-model="spell.duration" variant="plain" density="compact" hide-details placeholder="Instant" /></td>
+              <td style="width: 200px; max-width: 200px;">
+                <v-text-field v-model="spell.name" variant="plain" density="compact" hide-details placeholder="Spell / Prayer" />
+              </td>
+              <td style="width: 45px; max-width: 45px;">
+                <v-text-field v-model.number="spell.cn" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" />
+              </td>
+              <td style="width: 100px; max-width: 100px;">
+                <v-text-field v-model="spell.range" variant="plain" density="compact" hide-details placeholder="12 yd" />
+              </td>
+              <td style="width: 100px; max-width: 100px;">
+                <v-text-field v-model="spell.target" variant="plain" density="compact" hide-details placeholder="1 Target" />
+              </td>
+              <td style="width: 100px; max-width: 100px;">
+                <v-text-field v-model="spell.duration" variant="plain" density="compact" hide-details placeholder="Instant" />
+              </td>
+              <td>
+                <v-text-field v-model="spell.description" variant="plain" density="compact" hide-details placeholder="Effect and rules description..." />
+              </td>
               <td class="text-right"><DeleteRowBtn @delete="emit('removeSpell', idx)" /></td>
             </tr>
           </tbody>

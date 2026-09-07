@@ -10,7 +10,7 @@ const emit = defineEmits<{
 
 <template>
   <div class="sin-counter-widget d-inline-flex align-center bg-surface px-2 py-1 rounded border">
-    <span class="text-caption font-weight-bold text-secondary mr-2">Sin:</span>
+    <span class="text-caption font-weight-bold text-high-emphasis mr-2">Sin:</span>
     <v-btn
       icon="mdi-minus"
       size="x-small"
@@ -43,7 +43,7 @@ const emit = defineEmits<{
   border: none;
   background: transparent;
   outline: none;
-  color: currentColor;
+  color: rgb(var(--v-theme-on-surface));
   font-size: 0.9rem;
 }
 </style>

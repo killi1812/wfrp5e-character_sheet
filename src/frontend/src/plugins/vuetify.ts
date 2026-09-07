@@ -10,7 +10,7 @@ export default createVuetify({
         dark: true,
         colors: {
           primary: '#D4AF37', // Metallic Gold
-          secondary: '#9E2A2B', // Dark Crimson
+          secondary: '#38BDF8', // Steel Blue (non-red)
           accent: '#00A896',
           error: '#E63946',
           info: '#457B9D',
@@ -31,7 +31,7 @@ export default createVuetify({
         dark: false,
         colors: {
           primary: '#855B00',
-          secondary: '#8C1D1D',
+          secondary: '#475569', // Slate Steel (non-red)
           accent: '#028090',
           error: '#D32F2F',
           info: '#1976D2',
