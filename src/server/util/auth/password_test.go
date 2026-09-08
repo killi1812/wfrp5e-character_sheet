@@ -85,6 +85,12 @@ func TestHashPassword(t *testing.T) {
 			wantNonEmpty: true, // bcrypt will hash an empty string
 			wantErr:      false,
 		},
+		{
+			name:         "Password too long (exceeds bcrypt 72 bytes)",
+			password:     "this_password_is_way_too_long_and_exceeds_the_maximum_seventy_two_bytes_limit_for_bcrypt",
+			wantNonEmpty: false,
+			wantErr:      true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

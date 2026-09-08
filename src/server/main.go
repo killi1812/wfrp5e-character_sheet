@@ -5,7 +5,6 @@ import (
 	"github.com/killi1812/wfrp5e-character_sheet/auth"
 	"github.com/killi1812/wfrp5e-character_sheet/charactersheet"
 	"github.com/killi1812/wfrp5e-character_sheet/info"
-	"github.com/killi1812/wfrp5e-character_sheet/service"
 	"github.com/killi1812/wfrp5e-character_sheet/user"
 	"github.com/killi1812/wfrp5e-character_sheet/util/seed"
 
@@ -22,7 +21,6 @@ func main() {
 	// Provide logger
 	app.Provide(zap.S)
 
-	app.Provide(service.NewDiscordService)
 	app.Provide(user.NewUserCrudService)
 	app.Provide(auth.NewAuthService)
 	app.Provide(charactersheet.NewCharacterSheetCrudService)

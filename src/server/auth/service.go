@@ -133,8 +133,8 @@ func (s *AuthService) RefreshTokens(accessToken string) (string, error) {
 	}
 
 	if claims.TokenUuid != refreshClaims.TokenUuid {
-		s.logger.Errorf("Error token uuids don't match, err = %+v", err)
-		return "", err
+		s.logger.Errorf("Error token uuids don't match, claims=%s, refresh=%s", claims.TokenUuid, refreshClaims.TokenUuid)
+		return "", cerror.ErrInvalidTokenFormat
 	}
 
 	var usr user.User
