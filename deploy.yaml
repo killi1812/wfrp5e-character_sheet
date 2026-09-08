@@ -38,7 +38,7 @@ services:
       - database
 
   database:
-    image: mongo:latest
+    image: mongo:4.4.6
     container_name: wfrp5e_database
     restart: unless-stopped
     ports:
