@@ -31,9 +31,3 @@ jobs:
 
       - name: Test
         run: task test
-
-  deployment:
-    needs: build
-    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-    uses: ./.github/workflows/deployment.yaml
-    secrets: inherit
