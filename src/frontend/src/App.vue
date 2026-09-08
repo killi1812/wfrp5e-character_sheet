@@ -2,8 +2,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTheme } from 'vuetify'
 import AuthDialog from './components/AuthDialog.vue'
+import GuestUploadDialog from './components/GuestUploadDialog.vue'
 import AdminPage from './views/AdminPage.vue'
 import CharacterSheetPage from './views/CharacterSheetPage.vue'
+import { characterApi } from './services/characterApi'
 
 const theme = useTheme()
 const isDark = computed(() => theme.global.name.value === 'wfrpDark')
@@ -16,10 +18,24 @@ function toggleTheme() {
 const currentUser = ref<{ username: string; role: string; token: string; uuid?: string } | null>(null)
 const showAuthDialog = ref(false)
 const showKebabOverlay = ref(false)
+const showGuestUploadDialog = ref(false)
+const guestCharacterName = ref('')
 
 // Page Navigation View State ('sheet' | 'admin')
 const currentPage = ref<'sheet' | 'admin'>('sheet')
 const sheetRef = ref<InstanceType<typeof CharacterSheetPage> | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+async function handleFileUpload(e: Event) {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  if (currentPage.value !== 'sheet') {
+    navigateTo('sheet')
+  }
+  await sheetRef.value?.importJson(file)
+  target.value = ''
+}
 
 function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -77,8 +93,31 @@ function navigateTo(page: 'sheet' | 'admin') {
   showKebabOverlay.value = false
 }
 
-function onLoginSuccess(user: { username: string; role: string; token: string; uuid?: string }) {
+async function onLoginSuccess(user: { username: string; role: string; token: string; uuid?: string }) {
   currentUser.value = user
+  // Check if an offline character exists in localStorage to prompt migration
+  const guestData = characterApi.loadGuestSheet()
+  if (guestData && (guestData.character.name || guestData.character.career)) {
+    guestCharacterName.value = guestData.character.name || 'Unnamed Character'
+    showGuestUploadDialog.value = true
+  } else {
+    sheetRef.value?.loadUserCharacter()
+  }
+}
+
+async function uploadGuestSheet() {
+  const guestData = characterApi.loadGuestSheet()
+  if (guestData) {
+    try {
+      const res = await characterApi.saveCharacter(guestData)
+      characterApi.clearGuestSheet()
+      if (currentPage.value === 'sheet' && sheetRef.value) {
+        sheetRef.value.loadCharacterSheet(res.uuid)
+      }
+    } catch (err) {
+      console.warn('Failed to upload guest sheet to cloud:', err)
+    }
+  }
 }
 
 async function logout() {
@@ -175,6 +214,22 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
             />
 
             <v-list-item
+              prepend-icon="mdi-download"
+              title="Download Data (JSON)"
+              subtitle="Export as [date]-[character-name].json"
+              class="mb-2 rounded-lg bg-surface-variant border"
+              @click="sheetRef?.exportJson(); showKebabOverlay = false"
+            />
+
+            <v-list-item
+              prepend-icon="mdi-upload"
+              title="Upload Data (JSON)"
+              subtitle="Import character sheet from JSON file"
+              class="mb-2 rounded-lg bg-surface-variant border"
+              @click="fileInputRef?.click(); showKebabOverlay = false"
+            />
+
+            <v-list-item
               prepend-icon="mdi-file-plus-outline"
               title="New Blank Sheet"
               subtitle="Start with a blank sheet"
@@ -210,6 +265,15 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
       </v-card>
     </v-dialog>
 
+    <!-- Hidden File Input for JSON Upload -->
+    <input
+      ref="fileInputRef"
+      type="file"
+      accept=".json,application/json"
+      class="d-none"
+      @change="handleFileUpload"
+    />
+
     <!-- PAGE CONDITIONAL RENDERING -->
     <template v-if="currentPage === 'sheet'">
       <CharacterSheetPage ref="sheetRef" />
@@ -222,6 +286,11 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
     <!-- Dialogs -->
     <AuthDialog v-model="showAuthDialog" @login-success="onLoginSuccess" />
+    <GuestUploadDialog
+      v-model="showGuestUploadDialog"
+      :character-name="guestCharacterName"
+      @confirm-upload="uploadGuestSheet"
+    />
   </v-app>
 </template>
 

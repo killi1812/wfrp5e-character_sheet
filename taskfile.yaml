@@ -170,40 +170,57 @@ tasks:
   # |    docker compose   |
   # |_____________________|
   dc-start:
-    desc: "Start docker deps"
+    desc: "Start docker deps (database)"
     cmds:
       - cmd: "echo Starting docker dependencies"
-      - cmd: docker compose up -d
+      - cmd: docker compose up -d database
     silent: true
 
   dc-stop:
     desc: "Stop docker deps"
     cmds:
-      - cmd: "echo Stoping docker dependencies"
+      - cmd: "echo Stopping docker dependencies"
       - cmd: docker compose stop
     silent: true
 
   dc-clean:
-    desc: "Stop docker deps"
+    desc: "Stop docker deps and remove volumes"
     cmd: docker compose down -v
     silent: true
+
+  d-up:
+    desc: "Start all containers (caddy, client, server, database)"
+    cmds:
+      - cmd: docker compose up -d
+
+  d-down:
+    desc: "Stop and remove all containers"
+    cmds:
+      - cmd: docker compose down
+
   # _______________________
   # |                     |
   # |    Docker build     |
   # |_____________________|
 
-  # TODO: reimplemnt
   d-build:
-    desc: "build a docker image"
+    desc: "Build all docker images with version metadata"
     vars:
+      BUILD: "prod"
       VERSION:
-        sh: git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2> /dev/null | sed 's/^.//'
+        sh: git describe --tags --always --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' 2> /dev/null | sed 's/^.//' || echo "0.0.0"
+      COMMIT_HASH:
+        sh: git rev-parse --short HEAD 2>/dev/null || echo "n/a"
+      BUILD_TIMESTAMP:
+        sh: date '+%Y-%m-%dT%H:%M:%S'
     cmds:
-      - cmd: mkdir -p {{.BINARY_DIR}}
-      - cmd: docker build --tag {{.PACKAGE}} --tag {{.VERSION}} ./
-      - cmd: docker save -o {{.BINARY_DIR}}/{{.PACKAGE}}-{{.VERSION}}.tar {{.PACKAGE}}:latest
-
-    silent: true
+      - cmd: >-
+          docker compose build
+          --build-arg BUILD="{{.BUILD}}"
+          --build-arg VERSION="{{.VERSION}}"
+          --build-arg COMMIT_HASH="{{.COMMIT_HASH}}"
+          --build-arg BUILD_TIMESTAMP="{{.BUILD_TIMESTAMP}}"
+    silent: false
 
   # _______________________
   # |                     |

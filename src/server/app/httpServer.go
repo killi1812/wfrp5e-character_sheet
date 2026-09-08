@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -95,29 +93,9 @@ func run(ctx context.Context, wg *sync.WaitGroup) {
 	// cleanup
 	apis = nil
 
-	// setup static frontend serving
-	staticDir := "./public"
-	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
-		staticDir = "./dist"
-	}
-	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
-		staticDir = "../frontend/dist"
-	}
-	if _, err := os.Stat(staticDir); err == nil {
-		zap.S().Infof("Serving static frontend from %s", staticDir)
-		router.NoRoute(func(c *gin.Context) {
-			if strings.HasPrefix(c.Request.URL.Path, "/api") {
-				c.JSON(http.StatusNotFound, gin.H{"error": "API endpoint not found"})
-				return
-			}
-			reqPath := filepath.Join(staticDir, filepath.Clean(c.Request.URL.Path))
-			if fileInfo, err := os.Stat(reqPath); err == nil && !fileInfo.IsDir() {
-				c.File(reqPath)
-				return
-			}
-			c.File(filepath.Join(staticDir, "index.html"))
-		})
-	}
+	router.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Endpoint not found"})
+	})
 
 	addr := fmt.Sprintf(":%d", Port)
 	srv := &http.Server{

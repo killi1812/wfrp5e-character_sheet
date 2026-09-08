@@ -18,13 +18,8 @@ var (
 
 // Environment variables
 var (
-	Port               int
-	AccessKey          string
-	RefreshKey         string
-	DbConn             string
-	MongoConn          string
-	MIOEndpoint        string
-	MIOAccessKeyID     string
-	MIOSecretAccessKey string
-	MIOUseSSL          bool
+	Port       int
+	AccessKey  string
+	RefreshKey string
+	MongoConn  string
 )

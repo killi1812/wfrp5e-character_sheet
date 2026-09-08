@@ -25,10 +25,7 @@ docker compose -f deploy.yaml build \
   --build-arg COMMIT_HASH="$COMMIT_HASH" \
   --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP"
 
-echo "Starting database and minio..."
-docker compose -f deploy.yaml up -d mongo
-
-echo "Starting cache-server..."
-docker compose -f deploy.yaml up -d wfrp53ch-server wfrp53ch-frontend
+echo "Starting 4-container stack (database, server, client, caddy)..."
+docker compose -f deploy.yaml up -d
 
 echo "Deployment complete!"

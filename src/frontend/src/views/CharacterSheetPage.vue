@@ -35,7 +35,7 @@ const saveSnackbar = ref(false)
 const snackbarMessage = ref('')
 const currentSheetUuid = ref<string | undefined>(undefined)
 
-onMounted(() => {
+onMounted(async () => {
   // Restore guest character sheet from browser localStorage if unauthenticated
   if (!characterApi.isAuthenticated()) {
     const guestData = characterApi.loadGuestSheet()
@@ -45,6 +45,8 @@ onMounted(() => {
       advancedSkills.value = guestData.advancedSkills
       languages.value = guestData.languages
     }
+  } else {
+    await loadUserCharacter()
   }
 })
 
@@ -138,6 +140,112 @@ function newBlankSheet() {
   saveSnackbar.value = true
 }
 
+async function loadUserCharacter() {
+  if (!characterApi.isAuthenticated()) return
+  try {
+    const sheets = await characterApi.listCharacters()
+    if (sheets.length > 0 && sheets[0].uuid && sheets[0].uuid !== 'mock-gottfried' && sheets[0].uuid !== 'guest') {
+      await loadCharacterSheet(sheets[0].uuid)
+    }
+  } catch (err) {
+    console.warn('Failed to load user character:', err)
+  }
+}
+
+async function loadCharacterSheet(uuid: string) {
+  isSaving.value = true
+  try {
+    const data = await characterApi.getCharacter(uuid)
+    character.value = data.character
+    basicSkills.value = data.basicSkills
+    advancedSkills.value = data.advancedSkills
+    languages.value = data.languages
+    currentSheetUuid.value = (uuid !== 'guest' && uuid !== 'mock' && uuid !== 'demo' && uuid !== 'mock-gottfried') ? uuid : undefined
+    snackbarMessage.value = `Loaded ${data.character.name || 'character sheet'}!`
+    saveSnackbar.value = true
+  } catch {
+    snackbarMessage.value = 'Failed to load character sheet'
+    saveSnackbar.value = true
+  } finally {
+    isSaving.value = false
+  }
+}
+
+function exportJson() {
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    character: character.value,
+    basicSkills: basicSkills.value,
+    advancedSkills: advancedSkills.value,
+    languages: languages.value,
+  }
+
+  const dateStr = new Date().toISOString().split('T')[0]
+  const rawName = character.value.name?.trim() || 'character'
+  const safeName = rawName.replace(/[^\w\s.-]/gi, '').trim().replace(/\s+/g, '-') || 'character'
+  const filename = `${dateStr}-${safeName}.json`
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+
+  snackbarMessage.value = `Downloaded ${filename}`
+  saveSnackbar.value = true
+}
+
+async function importJson(file: File) {
+  try {
+    const text = await file.text()
+    const parsed = JSON.parse(text)
+    const blank = characterApi.getBlankData()
+
+    const rawChar = parsed.character || parsed
+    if (!rawChar || typeof rawChar !== 'object') {
+      throw new Error('Invalid JSON character sheet format')
+    }
+
+    character.value = {
+      ...blank.character,
+      ...rawChar,
+      characteristics: {
+        ...blank.character.characteristics,
+        ...(rawChar.characteristics || {}),
+      },
+      wounds: { ...blank.character.wounds, ...(rawChar.wounds || {}) },
+      armourPoints: { ...blank.character.armourPoints, ...(rawChar.armourPoints || {}) },
+      wealth: { ...blank.character.wealth, ...(rawChar.wealth || {}) },
+      talents: Array.isArray(rawChar.talents) ? rawChar.talents : [],
+      weapons: Array.isArray(rawChar.weapons) ? rawChar.weapons : [],
+      armour: Array.isArray(rawChar.armour) ? rawChar.armour : [],
+      trappings: Array.isArray(rawChar.trappings) ? rawChar.trappings : [],
+      spells: Array.isArray(rawChar.spells) ? rawChar.spells : [],
+      mutations: Array.isArray(rawChar.mutations) ? rawChar.mutations : [],
+      advances2: Array.isArray(rawChar.advances2) && rawChar.advances2.length === 10 ? rawChar.advances2 : Array(10).fill(false),
+      advances3: Array.isArray(rawChar.advances3) && rawChar.advances3.length === 10 ? rawChar.advances3 : Array(10).fill(false),
+      advances4: Array.isArray(rawChar.advances4) && rawChar.advances4.length === 10 ? rawChar.advances4 : Array(10).fill(false),
+    }
+
+    basicSkills.value = Array.isArray(parsed.basicSkills) ? parsed.basicSkills : blank.basicSkills
+    advancedSkills.value = Array.isArray(parsed.advancedSkills) ? parsed.advancedSkills : []
+    languages.value = Array.isArray(parsed.languages) ? parsed.languages : []
+
+    currentSheetUuid.value = undefined
+    snackbarMessage.value = `Imported character: "${character.value.name || 'Unnamed'}"`
+    saveSnackbar.value = true
+  } catch (err: any) {
+    console.error('Import error:', err)
+    snackbarMessage.value = `Failed to import JSON: ${err?.message || 'Invalid file format'}`
+    saveSnackbar.value = true
+  }
+}
+
 // Add / Remove Row Handlers for Advanced Skills, Languages & items
 function addAdvancedSkill() {
   advancedSkills.value.push(NEW_ITEM_TEMPLATES.advancedSkill())
@@ -205,8 +313,13 @@ function removeMutation(index: number) {
 
 defineExpose({
   saveSheet,
+  loadUserCharacter,
+  loadCharacterSheet,
   newBlankSheet,
   loadMockData,
+  exportJson,
+  importJson,
+  currentSheetUuid,
 })
 </script>
 

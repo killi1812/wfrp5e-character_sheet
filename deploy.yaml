@@ -1,24 +1,54 @@
 services:
-  mongo:
-    image: mongo
+  caddy:
+    image: caddy:alpine
+    container_name: wfrp5e_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8080:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - client
+      - server
+
+  client:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+    container_name: wfrp5e_client
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  server:
+    build:
+      context: ./src/server
+      dockerfile: Dockerfile
+    container_name: wfrp5e_server
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      - PORT=8080
+      - MONGO_CONN=mongodb://database:27017
+      - ACCESS_KEY=dev_access_secret_key_123456789
+      - REFRESH_KEY=dev_refresh_secret_key_987654321
+    depends_on:
+      - database
+
+  database:
+    image: mongo:latest
+    container_name: wfrp5e_database
+    restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
-  app:
-    build:
-      context: .
-      dockerfile: dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - PORT=8080
-      - MONGO_CONN=mongodb://mongo:27017
-      - ACCESS_KEY=dev_access_secret_key_123456789
-      - REFRESH_KEY=dev_refresh_secret_key_987654321
-    depends_on:
-      - mongo
+    networks:
+      default:
+        aliases:
+          - mongo
 
 volumes:
-  # postgres_data:
   mongo_data:

@@ -1,0 +1,16 @@
+:80 {
+	# Proxy API requests to backend Go server
+	handle /api/* {
+		reverse_proxy server:8080
+	}
+
+	# Proxy Swagger documentation
+	handle /swagger/* {
+		reverse_proxy server:8080
+	}
+
+	# Proxy all frontend client requests (HTML, JS, CSS, client routes)
+	handle {
+		reverse_proxy client:80
+	}
+}

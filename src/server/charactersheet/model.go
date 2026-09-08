@@ -141,6 +141,9 @@ type CharacterSheet struct {
 	CareerLevel       int                      `json:"careerLevel" bson:"career_level"`
 	CareerPath        string                   `json:"careerPath" bson:"career_path"`
 	CareerAdvancement CareerAdvancementTracker `json:"careerAdvancement" bson:"career_advancement"`
+	Advances2         []bool                   `json:"advances2,omitempty" bson:"advances2,omitempty"`
+	Advances3         []bool                   `json:"advances3,omitempty" bson:"advances3,omitempty"`
+	Advances4         []bool                   `json:"advances4,omitempty" bson:"advances4,omitempty"`
 	Status            string                   `json:"status" bson:"status"`
 
 	// XP
@@ -173,6 +176,7 @@ type CharacterSheet struct {
 	Wealth           Wealth         `json:"wealth" bson:"wealth"`
 	Encumbrance      Encumbrance    `json:"encumbrance" bson:"encumbrance"`
 	CorruptionPoints int            `json:"corruptionPoints" bson:"corruption_points"`
+	Sin              int            `json:"sin" bson:"sin"`
 	Mutations        []Mutation     `json:"mutations" bson:"mutations"`
 	Weapons          []WeaponItem   `json:"weapons" bson:"weapons"`
 	Armour           []ArmourItem   `json:"armour" bson:"armour"`

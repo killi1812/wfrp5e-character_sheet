@@ -29,18 +29,38 @@ func NewCharacterSheetCtn() app.Controller {
 }
 
 func (c *CharacterSheetCtn) RegisterEndpoints(api *gin.RouterGroup) {
-	group := api.Group("/character-sheets")
+	group := api.Group("/character-sheets", auth.Protect())
 
 	// Protected routes
-	group.GET("/", auth.Protect(), c.getAll)
-	group.GET("/:uuid", auth.Protect(), c.getOne)
-	group.POST("/", auth.Protect(), c.create)
-	group.PUT("/:uuid", auth.Protect(), c.update)
-	group.DELETE("/:uuid", auth.Protect(), c.delete)
+	group.GET("/", c.getAll)
+	group.GET("/:uuid", c.getOne)
+	group.POST("/", c.create)
+	group.PUT("/:uuid", c.update)
+	group.DELETE("/:uuid", c.delete)
+}
+
+func getUserInfo(ctx *gin.Context) (uuid.UUID, string) {
+	if authHeader := ctx.GetHeader("Authorization"); authHeader != "" {
+		if _, claims, err := auth.ParseToken(authHeader); err == nil && claims.ID != "" {
+			if parsedUserUuid, err := uuid.Parse(claims.ID); err == nil {
+				return parsedUserUuid, claims.Role
+			}
+		}
+	}
+	return uuid.Nil, ""
 }
 
 func (c *CharacterSheetCtn) getAll(ctx *gin.Context) {
-	sheets, err := c.service.ReadAll()
+	userUuid, role := getUserInfo(ctx)
+
+	var sheets []CharacterSheet
+	var err error
+	if role == "admin" || userUuid == uuid.Nil {
+		sheets, err = c.service.ReadAll()
+	} else {
+		sheets, err = c.service.ReadByUser(userUuid)
+	}
+
 	if err != nil {
 		c.logger.Errorf("Failed to fetch character sheets: %v", err)
 		ctx.AbortWithError(http.StatusInternalServerError, err)
@@ -66,6 +86,12 @@ func (c *CharacterSheetCtn) getOne(ctx *gin.Context) {
 		return
 	}
 
+	userUuid, role := getUserInfo(ctx)
+	if role != "admin" && sheet.UserUuid != uuid.Nil && userUuid != uuid.Nil && sheet.UserUuid != userUuid {
+		ctx.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
 	ctx.JSON(http.StatusOK, sheet)
 }
 
@@ -73,16 +99,13 @@ func (c *CharacterSheetCtn) create(ctx *gin.Context) {
 	var sheet CharacterSheet
 	if err := ctx.BindJSON(&sheet); err != nil {
 		c.logger.Errorf("Failed to bind character sheet JSON: %v", err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
-	// Try extracting logged in user ID from token
-	if authHeader := ctx.GetHeader("Authorization"); authHeader != "" {
-		if _, claims, err := auth.ParseToken(authHeader); err == nil && claims.ID != "" {
-			if parsedUserUuid, err := uuid.Parse(claims.ID); err == nil {
-				sheet.UserUuid = parsedUserUuid
-			}
-		}
+	userUuid, _ := getUserInfo(ctx)
+	if userUuid != uuid.Nil {
+		sheet.UserUuid = userUuid
 	}
 
 	created, err := c.service.Create(&sheet)
@@ -102,18 +125,36 @@ func (c *CharacterSheetCtn) update(ctx *gin.Context) {
 		return
 	}
 
-	var sheet CharacterSheet
-	if err := ctx.BindJSON(&sheet); err != nil {
-		c.logger.Errorf("Failed to bind update JSON: %v", err)
-		return
-	}
-
-	updated, err := c.service.Update(sheetUuid, &sheet)
+	existing, err := c.service.Read(sheetUuid)
 	if err != nil {
 		if errors.Is(err, ErrSheetNotFound) {
 			ctx.AbortWithError(http.StatusNotFound, err)
 			return
 		}
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	userUuid, role := getUserInfo(ctx)
+	if role != "admin" && existing.UserUuid != uuid.Nil && userUuid != uuid.Nil && existing.UserUuid != userUuid {
+		ctx.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
+	var sheet CharacterSheet
+	if err := ctx.BindJSON(&sheet); err != nil {
+		c.logger.Errorf("Failed to bind update JSON: %v", err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		return
+	}
+
+	if sheet.UserUuid == uuid.Nil {
+		sheet.UserUuid = existing.UserUuid
+	}
+
+	updated, err := c.service.Update(sheetUuid, &sheet)
+	if err != nil {
+		c.logger.Errorf("Failed to update character sheet: %v", err)
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
@@ -128,7 +169,7 @@ func (c *CharacterSheetCtn) delete(ctx *gin.Context) {
 		return
 	}
 
-	err = c.service.Delete(sheetUuid)
+	existing, err := c.service.Read(sheetUuid)
 	if err != nil {
 		if errors.Is(err, ErrSheetNotFound) {
 			ctx.AbortWithError(http.StatusNotFound, err)
@@ -138,5 +179,18 @@ func (c *CharacterSheetCtn) delete(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusNoContent, nil)
+	userUuid, role := getUserInfo(ctx)
+	if role != "admin" && existing.UserUuid != uuid.Nil && userUuid != uuid.Nil && existing.UserUuid != userUuid {
+		ctx.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
+	err = c.service.Delete(sheetUuid)
+	if err != nil {
+		c.logger.Errorf("Failed to delete character sheet: %v", err)
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
