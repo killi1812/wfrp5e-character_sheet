@@ -4,7 +4,6 @@ services:
     container_name: wfrp5e_caddy
     restart: unless-stopped
     ports:
-      - "80:80"
       - "8012:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -32,8 +31,9 @@ services:
     environment:
       - PORT=8080
       - MONGO_CONN=mongodb://database:27017
-      - ACCESS_KEY=dev_access_secret_key_123456789
-      - REFRESH_KEY=dev_refresh_secret_key_987654321
+      - ACCESS_KEY=${ACCESS_KEY}
+      - REFRESH_KEY=${REFRESH_KEY}
+      - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD}
     depends_on:
       - database
 
@@ -42,7 +42,7 @@ services:
     container_name: wfrp5e_database
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo_data:/data/db
     networks:
