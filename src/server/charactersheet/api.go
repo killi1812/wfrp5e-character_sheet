@@ -1,11 +1,11 @@
 package charactersheet
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/killi1812/wfrp5e-character_sheet/app"
 	"github.com/killi1812/wfrp5e-character_sheet/util/auth"
+	"github.com/killi1812/wfrp5e-character_sheet/util/ginutil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -69,26 +69,27 @@ func (c *CharacterSheetCtn) getAll(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, sheets)
 }
 
+func (c *CharacterSheetCtn) hasAccess(ctx *gin.Context, sheetOwner uuid.UUID) bool {
+	userUuid, role := getUserInfo(ctx)
+	if role != "admin" && sheetOwner != uuid.Nil && userUuid != uuid.Nil && sheetOwner != userUuid {
+		ctx.AbortWithStatus(http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
 func (c *CharacterSheetCtn) getOne(ctx *gin.Context) {
-	sheetUuid, err := uuid.Parse(ctx.Param("uuid"))
-	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+	sheetUuid, ok := ginutil.ParseUUIDParam(ctx, "uuid")
+	if !ok {
 		return
 	}
 
 	sheet, err := c.service.Read(sheetUuid)
-	if err != nil {
-		if errors.Is(err, ErrSheetNotFound) {
-			ctx.AbortWithError(http.StatusNotFound, err)
-			return
-		}
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+	if ginutil.HandleServiceError(ctx, err, ErrSheetNotFound) {
 		return
 	}
 
-	userUuid, role := getUserInfo(ctx)
-	if role != "admin" && sheet.UserUuid != uuid.Nil && userUuid != uuid.Nil && sheet.UserUuid != userUuid {
-		ctx.AbortWithStatus(http.StatusForbidden)
+	if !c.hasAccess(ctx, sheet.UserUuid) {
 		return
 	}
 
@@ -119,25 +120,17 @@ func (c *CharacterSheetCtn) create(ctx *gin.Context) {
 }
 
 func (c *CharacterSheetCtn) update(ctx *gin.Context) {
-	sheetUuid, err := uuid.Parse(ctx.Param("uuid"))
-	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+	sheetUuid, ok := ginutil.ParseUUIDParam(ctx, "uuid")
+	if !ok {
 		return
 	}
 
 	existing, err := c.service.Read(sheetUuid)
-	if err != nil {
-		if errors.Is(err, ErrSheetNotFound) {
-			ctx.AbortWithError(http.StatusNotFound, err)
-			return
-		}
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+	if ginutil.HandleServiceError(ctx, err, ErrSheetNotFound) {
 		return
 	}
 
-	userUuid, role := getUserInfo(ctx)
-	if role != "admin" && existing.UserUuid != uuid.Nil && userUuid != uuid.Nil && existing.UserUuid != userUuid {
-		ctx.AbortWithStatus(http.StatusForbidden)
+	if !c.hasAccess(ctx, existing.UserUuid) {
 		return
 	}
 
@@ -163,25 +156,17 @@ func (c *CharacterSheetCtn) update(ctx *gin.Context) {
 }
 
 func (c *CharacterSheetCtn) delete(ctx *gin.Context) {
-	sheetUuid, err := uuid.Parse(ctx.Param("uuid"))
-	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+	sheetUuid, ok := ginutil.ParseUUIDParam(ctx, "uuid")
+	if !ok {
 		return
 	}
 
 	existing, err := c.service.Read(sheetUuid)
-	if err != nil {
-		if errors.Is(err, ErrSheetNotFound) {
-			ctx.AbortWithError(http.StatusNotFound, err)
-			return
-		}
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+	if ginutil.HandleServiceError(ctx, err, ErrSheetNotFound) {
 		return
 	}
 
-	userUuid, role := getUserInfo(ctx)
-	if role != "admin" && existing.UserUuid != uuid.Nil && userUuid != uuid.Nil && existing.UserUuid != userUuid {
-		ctx.AbortWithStatus(http.StatusForbidden)
+	if !c.hasAccess(ctx, existing.UserUuid) {
 		return
 	}
 

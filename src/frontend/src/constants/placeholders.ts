@@ -144,6 +144,22 @@ export interface CharacterModel {
   notes: string
 }
 
+export const STAT_KEYS = ['WS', 'BS', 'S', 'T', 'I', 'Ag', 'Dex', 'Int', 'WP', 'Fel'] as const
+export type StatKey = (typeof STAT_KEYS)[number]
+
+export const STAT_NAMES: Record<StatKey, string> = {
+  WS: 'Weapon Skill',
+  BS: 'Ballistic Skill',
+  S: 'Strength',
+  T: 'Toughness',
+  I: 'Initiative',
+  Ag: 'Agility',
+  Dex: 'Dexterity',
+  Int: 'Intelligence',
+  WP: 'Willpower',
+  Fel: 'Fellowship',
+}
+
 export const DEFAULT_CHARACTER: CharacterModel = {
   name: '',
   species: '',

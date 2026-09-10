@@ -168,20 +168,7 @@ func (u *UserCrudService) Create(user *User, password string) (*User, error) {
 }
 
 func (u *UserCrudService) GetAllUsers() ([]User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cursor, err := u.usersColl().Find(ctx, bson.M{})
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-
-	var users []User
-	if err := cursor.All(ctx, &users); err != nil {
-		return nil, err
-	}
-	return users, nil
+	return u.ReadAll()
 }
 
 func (u *UserCrudService) SearchUsersByName(query string) ([]User, error) {

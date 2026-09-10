@@ -28,3 +28,18 @@ input[type='number']::-webkit-inner-spin-button {
 input[type='number'] {
   -moz-appearance: textfield;
 }
+
+/* Important row highlight shared across tables */
+.important-row {
+  background-color: rgba(var(--v-theme-primary), 0.12) !important;
+}
+
+/* Hover-reveal for ImportantBtn icon within table cells */
+.important-trigger-cell .important-icon-btn:not(.active) {
+  opacity: 0;
+}
+
+.important-trigger-cell:hover .important-icon-btn,
+.important-trigger-cell .important-icon-btn.active {
+  opacity: 1;
+}

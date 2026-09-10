@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Weapon } from '../../constants/placeholders'
+import { formatDamage } from '../../utils/damage'
 import SectionCard from '../ui/SectionCard.vue'
 import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
 
@@ -13,17 +14,7 @@ const emit = defineEmits<{
   (e: 'removeWeapon', index: number): void
 }>()
 
-/** Parse damage like "+SB+4" and compute total if SB is present */
-function formatDamage(damage: string): string {
-  if (!damage) return ''
-  const sbMatch = damage.match(/\+?\s*SB\s*\+?\s*(\d+)/i)
-  if (sbMatch) {
-    const bonus = Number(sbMatch[1]) || 0
-    const sb = props.getCharBonus('S')
-    return `${damage} (${sb + bonus})`
-  }
-  return damage
-}
+const formatWeaponDamage = (damage: string) => formatDamage(damage, props.getCharBonus('S'))
 </script>
 
 <template>
@@ -48,12 +39,12 @@ function formatDamage(damage: string): string {
           <td style="max-width: 60px;"><v-text-field v-model.number="w.enc" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" /></td>
           <td style="max-width: 100px;"><v-text-field v-model="w.rangeReach" variant="plain" density="compact" hide-details placeholder="Melee" /></td>
           <td style="max-width: 120px;">
-            <v-tooltip :text="'Computed: ' + formatDamage(w.damage)" location="top" :disabled="!w.damage">
+            <v-tooltip :text="'Computed: ' + formatWeaponDamage(w.damage)" location="top" :disabled="!w.damage">
               <template #activator="{ props: tProps }">
                 <div v-bind="tProps" class="d-flex align-center">
                   <v-text-field v-model="w.damage" variant="plain" density="compact" hide-details placeholder="+SB+4" />
                   <span v-if="w.damage && w.damage.toLowerCase().includes('sb')" class="text-caption text-primary font-weight-bold ml-1 text-no-wrap">
-                    ({{ formatDamage(w.damage).match(/\((\d+)\)/)?.[1] }})
+                    ({{ formatWeaponDamage(w.damage).match(/\((\d+)\)/)?.[1] }})
                   </span>
                 </div>
               </template>

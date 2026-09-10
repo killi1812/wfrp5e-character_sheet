@@ -11,7 +11,9 @@ import {
   MOCK_BASIC_SKILLS,
   MOCK_ADVANCED_SKILLS,
   MOCK_LANGUAGES,
+  STAT_KEYS,
 } from '../constants/placeholders'
+import { ensureBoolArray } from '../utils/arrays'
 
 export interface CharacterSheetPayload {
   character: CharacterModel
@@ -324,9 +326,9 @@ class CharacterApiService {
           career: c.career || '',
           status: c.status || '',
           active: Boolean(c.active),
-          advances2: Array.isArray(c.advances2) && c.advances2.length === 10 ? c.advances2 : Array(10).fill(false),
-          advances3: Array.isArray(c.advances3) && c.advances3.length === 12 ? c.advances3 : Array(12).fill(false),
-          advances4: Array.isArray(c.advances4) && c.advances4.length === 14 ? c.advances4 : Array(14).fill(false),
+          advances2: ensureBoolArray(c.advances2, 10),
+          advances3: ensureBoolArray(c.advances3, 12),
+          advances4: ensureBoolArray(c.advances4, 14),
         }))
       : [
           {
@@ -334,9 +336,9 @@ class CharacterApiService {
             career: backendData.career || '',
             status: backendData.status || '',
             active: true,
-            advances2: Array.isArray(backendData.advances2) && backendData.advances2.length === 10 ? backendData.advances2 : Array(10).fill(false),
-            advances3: Array.isArray(backendData.advances3) && backendData.advances3.length === 12 ? backendData.advances3 : Array(12).fill(false),
-            advances4: Array.isArray(backendData.advances4) && backendData.advances4.length === 14 ? backendData.advances4 : Array(14).fill(false),
+            advances2: ensureBoolArray(backendData.advances2, 10),
+            advances3: ensureBoolArray(backendData.advances3, 12),
+            advances4: ensureBoolArray(backendData.advances4, 14),
           },
         ]
 
@@ -349,7 +351,7 @@ class CharacterApiService {
       const bm = backendData.mount
       const mChars: any = { ...blank.character.mount?.characteristics }
       if (bm.characteristics) {
-        for (const code of ['WS', 'BS', 'S', 'T', 'I', 'Ag', 'Dex', 'Int', 'WP', 'Fel']) {
+        for (const code of STAT_KEYS) {
           const lower = code.toLowerCase()
           const bStat = bm.characteristics[lower]
           if (bStat) {
@@ -438,9 +440,9 @@ class CharacterApiService {
         rightLeg: backendData.armourPoints?.secondaryLeg || 0,
         shield: backendData.armourPoints?.shield || 0,
       },
-      advances2: Array.isArray(backendData.advances2) && backendData.advances2.length === 10 ? backendData.advances2 : Array(10).fill(false),
-      advances3: Array.isArray(backendData.advances3) && backendData.advances3.length === 12 ? backendData.advances3 : Array(12).fill(false),
-      advances4: Array.isArray(backendData.advances4) && backendData.advances4.length === 14 ? backendData.advances4 : Array(14).fill(false),
+      advances2: ensureBoolArray(backendData.advances2, 10),
+      advances3: ensureBoolArray(backendData.advances3, 12),
+      advances4: ensureBoolArray(backendData.advances4, 14),
       talents: Array.isArray(backendData.talents)
         ? backendData.talents.map((t: any) => ({
             name: t.name || '',
@@ -657,18 +659,20 @@ class CharacterApiService {
       mountHidden: Boolean(character.mountHidden),
       mount: character.mount ? {
         name: character.mount.name || '',
-        characteristics: {
-          ws: character.mount.characteristics.WS ? { initial: Number(character.mount.characteristics.WS.initial) || 0, current: (Number(character.mount.characteristics.WS.initial) || 0) + (Number(character.mount.characteristics.WS.advances) || 0) } : null,
-          bs: character.mount.characteristics.BS ? { initial: Number(character.mount.characteristics.BS.initial) || 0, current: (Number(character.mount.characteristics.BS.initial) || 0) + (Number(character.mount.characteristics.BS.advances) || 0) } : null,
-          s: character.mount.characteristics.S ? { initial: Number(character.mount.characteristics.S.initial) || 0, current: (Number(character.mount.characteristics.S.initial) || 0) + (Number(character.mount.characteristics.S.advances) || 0) } : null,
-          t: character.mount.characteristics.T ? { initial: Number(character.mount.characteristics.T.initial) || 0, current: (Number(character.mount.characteristics.T.initial) || 0) + (Number(character.mount.characteristics.T.advances) || 0) } : null,
-          i: character.mount.characteristics.I ? { initial: Number(character.mount.characteristics.I.initial) || 0, current: (Number(character.mount.characteristics.I.initial) || 0) + (Number(character.mount.characteristics.I.advances) || 0) } : null,
-          ag: character.mount.characteristics.Ag ? { initial: Number(character.mount.characteristics.Ag.initial) || 0, current: (Number(character.mount.characteristics.Ag.initial) || 0) + (Number(character.mount.characteristics.Ag.advances) || 0) } : null,
-          dex: character.mount.characteristics.Dex ? { initial: Number(character.mount.characteristics.Dex.initial) || 0, current: (Number(character.mount.characteristics.Dex.initial) || 0) + (Number(character.mount.characteristics.Dex.advances) || 0) } : null,
-          int: character.mount.characteristics.Int ? { initial: Number(character.mount.characteristics.Int.initial) || 0, current: (Number(character.mount.characteristics.Int.initial) || 0) + (Number(character.mount.characteristics.Int.advances) || 0) } : null,
-          wp: character.mount.characteristics.WP ? { initial: Number(character.mount.characteristics.WP.initial) || 0, current: (Number(character.mount.characteristics.WP.initial) || 0) + (Number(character.mount.characteristics.WP.advances) || 0) } : null,
-          fel: character.mount.characteristics.Fel ? { initial: Number(character.mount.characteristics.Fel.initial) || 0, current: (Number(character.mount.characteristics.Fel.initial) || 0) + (Number(character.mount.characteristics.Fel.advances) || 0) } : null,
-        },
+        characteristics: Object.fromEntries(
+          STAT_KEYS.map((code) => {
+            const stat = character.mount?.characteristics?.[code]
+            return [
+              code.toLowerCase(),
+              stat
+                ? {
+                    initial: Number(stat.initial) || 0,
+                    current: (Number(stat.initial) || 0) + (Number(stat.advances) || 0),
+                  }
+                : null,
+            ]
+          })
+        ),
         attacks: character.mount.attacks.map((a) => ({
           name: a.name || '',
           skillToRoll: a.skillToRoll || '',

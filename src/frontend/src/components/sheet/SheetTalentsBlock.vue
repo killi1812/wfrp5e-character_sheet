@@ -2,6 +2,7 @@
 import type { Talent, Skill } from '../../constants/placeholders'
 import SectionCard from '../ui/SectionCard.vue'
 import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
+import ImportantBtn from '../ui/ImportantBtn.vue'
 
 const props = defineProps<{
   talents: Talent[]
@@ -36,22 +37,15 @@ const getLanguageTotal = (lang: Skill) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(talent, idx) in talents" :key="idx" :class="{ 'talent-important-row': talent.important }">
+            <tr v-for="(talent, idx) in talents" :key="idx" :class="{ 'important-row': talent.important }">
               <td style="width: 200px; max-width: 200px;">
-                <div class="d-flex align-center justify-space-between talent-name-cell">
+                <div class="d-flex align-center justify-space-between important-trigger-cell">
                   <v-text-field v-model="talent.name" variant="plain" density="compact" hide-details placeholder="Talent Name" />
-                  <v-btn
-                    icon
-                    size="x-small"
-                    variant="text"
-                    density="compact"
-                    class="talent-important-btn ml-1"
-                    :class="{ 'btn-active': talent.important }"
-                    :title="talent.important ? 'Marked as important' : 'Mark as important'"
-                    @click="talent.important = !talent.important"
-                  >
-                    <v-icon size="14">{{ talent.important ? 'mdi-alert-circle' : 'mdi-alert-circle-outline' }}</v-icon>
-                  </v-btn>
+                  <ImportantBtn
+                    :active="talent.important"
+                    class="ml-1"
+                    @toggle="talent.important = !talent.important"
+                  />
                 </div>
               </td>
               <td>
@@ -85,22 +79,15 @@ const getLanguageTotal = (lang: Skill) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(lang, idx) in languages" :key="idx" :class="{ 'talent-important-row': lang.important }">
+            <tr v-for="(lang, idx) in languages" :key="idx" :class="{ 'important-row': lang.important }">
               <td>
-                <div class="d-flex align-center justify-space-between talent-name-cell">
+                <div class="d-flex align-center justify-space-between important-trigger-cell">
                   <v-text-field v-model="lang.name" variant="plain" density="compact" hide-details placeholder="Language Name" />
-                  <v-btn
-                    icon
-                    size="x-small"
-                    variant="text"
-                    density="compact"
-                    class="talent-important-btn ml-1"
-                    :class="{ 'btn-active': lang.important }"
-                    :title="lang.important ? 'Marked as important' : 'Mark as important'"
-                    @click="lang.important = !lang.important"
-                  >
-                    <v-icon size="14">{{ lang.important ? 'mdi-alert-circle' : 'mdi-alert-circle-outline' }}</v-icon>
-                  </v-btn>
+                  <ImportantBtn
+                    :active="lang.important"
+                    class="ml-1"
+                    @toggle="lang.important = !lang.important"
+                  />
                 </div>
               </td>
               <td style="max-width: 60px;"><v-text-field v-model.number="lang.adv" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" /></td>
@@ -125,24 +112,5 @@ const getLanguageTotal = (lang: Skill) => {
 <style scoped>
 :deep(td) {
   white-space: normal;
-}
-
-.talent-important-row {
-  background-color: rgba(var(--v-theme-primary), 0.12) !important;
-}
-
-.talent-name-cell .talent-important-btn {
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
-.talent-name-cell:hover .talent-important-btn,
-.talent-important-btn.btn-active {
-  opacity: 1;
-}
-
-.talent-important-btn.btn-active {
-  color: rgb(var(--v-theme-primary)) !important;
 }
 </style>

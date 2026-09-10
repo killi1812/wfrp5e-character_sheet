@@ -1,11 +1,11 @@
 package user
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/killi1812/wfrp5e-character_sheet/app"
 	"github.com/killi1812/wfrp5e-character_sheet/util/auth"
+	"github.com/killi1812/wfrp5e-character_sheet/util/ginutil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -62,23 +62,14 @@ func (u *UserCtn) RegisterEndpoints(api *gin.RouterGroup) {
 //	@Param			uuid	path	string	true	"user uuid"
 //	@Router			/user/{uuid} [get]
 func (u *UserCtn) get(c *gin.Context) {
-	userUuid, err := uuid.Parse(c.Param("uuid"))
-	if err != nil {
+	userUuid, ok := ginutil.ParseUUIDParam(c, "uuid")
+	if !ok {
 		u.logger.Errorf("error parsing uuid value = %s", c.Param("uuid"))
-		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
 	user, err := u.UserCrud.Read(userUuid)
-	if err != nil {
-		if errors.Is(err, ErrRecordNotFound) {
-			u.logger.Errorf("User with uuid = %s not found", userUuid)
-			c.AbortWithError(http.StatusNotFound, err)
-			return
-		}
-
-		u.logger.Errorf("Failed to get user with uuid = %s", userUuid)
-		c.AbortWithError(http.StatusInternalServerError, err)
+	if ginutil.HandleServiceError(c, err, ErrRecordNotFound) {
 		return
 	}
 
@@ -139,10 +130,9 @@ func (u *UserCtn) create(c *gin.Context) {
 //	@Param		model	body	UserDto	true	"Data for updating user"
 //	@Router		/user/{uuid} [put]
 func (u *UserCtn) update(c *gin.Context) {
-	userUuid, err := uuid.Parse(c.Param("uuid"))
-	if err != nil {
+	userUuid, ok := ginutil.ParseUUIDParam(c, "uuid")
+	if !ok {
 		u.logger.Errorf("Error parsing UUID = %s", c.Param("uuid"))
-		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
@@ -180,23 +170,14 @@ func (u *UserCtn) update(c *gin.Context) {
 //	@Param			uuid	path	string	true	"user uuid"
 //	@Router			/user/{uuid} [delete]
 func (u *UserCtn) delete(c *gin.Context) {
-	userUuid, err := uuid.Parse(c.Param("uuid"))
-	if err != nil {
+	userUuid, ok := ginutil.ParseUUIDParam(c, "uuid")
+	if !ok {
 		u.logger.Errorf("error parsing uuid value = %s", c.Param("uuid"))
-		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	err = u.UserCrud.Delete(userUuid)
-	if err != nil {
-		if errors.Is(err, ErrRecordNotFound) {
-			u.logger.Errorf("User with uuid = %s not found", userUuid)
-			c.AbortWithError(http.StatusNotFound, err)
-			return
-		}
-
-		u.logger.Errorf("Failed to delete user with uuid = %s", userUuid)
-		c.AbortWithError(http.StatusInternalServerError, err)
+	err := u.UserCrud.Delete(userUuid)
+	if ginutil.HandleServiceError(c, err, ErrRecordNotFound) {
 		return
 	}
 
@@ -231,15 +212,7 @@ func (u *UserCtn) getLoggedInUser(c *gin.Context) {
 	}
 
 	user, err := u.UserCrud.Read(userUuid)
-	if err != nil {
-		if errors.Is(err, ErrRecordNotFound) {
-			u.logger.Errorf("User with uuid = %s not found", userUuid)
-			c.AbortWithError(http.StatusNotFound, err)
-			return
-		}
-
-		u.logger.Errorf("Failed to fetch user with uuid = %s: %v", userUuid, err)
-		c.AbortWithError(http.StatusInternalServerError, err)
+	if ginutil.HandleServiceError(c, err, ErrRecordNotFound) {
 		return
 	}
 

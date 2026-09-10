@@ -5,6 +5,7 @@ import { NEW_ITEM_TEMPLATES } from '../../constants/placeholders'
 import SectionCard from '../ui/SectionCard.vue'
 import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
 import AddBtn from '../ui/AddBtn.vue'
+import BagContainerRow from './BagContainerRow.vue'
 
 const props = defineProps<{
   armour: ArmourItem[]
@@ -296,53 +297,14 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
                 </tr>
 
                 <!-- BAG CONTENTS ACCORDION SECTION -->
-                <tr v-if="t.isBag && openBags[t.id || String(idx)]" class="bag-contents-row">
-                  <td colspan="6" class="pa-2 bg-surface">
-                    <div class="bag-inner-box pa-2 rounded border" @dragover.prevent
-                      @drop.stop="onDropIntoBag($event, t)">
-                      <div class="d-flex justify-space-between align-center mb-1">
-                        <span class="text-caption font-weight-bold text-secondary">
-                          Contents of {{ t.name || 'Bag' }} (Excluded from personal Enc)
-                        </span>
-                        <AddBtn label="Add item to bag" color="secondary" variant="text" @click="addItemToBag(t)" />
-                      </div>
-
-                      <div v-if="!t.containedTrappings || t.containedTrappings.length === 0"
-                        class="text-caption text-medium-emphasis font-italic py-2 text-center">
-                        Bag is empty. Drag items here or click "+ Add item to bag".
-                      </div>
-
-                      <v-table v-else density="compact" class="bg-transparent text-caption">
-            <tbody>
-              <tr v-for="(sub, subIdx) in t.containedTrappings" :key="sub.id || subIdx" draggable="true"
-                class="sub-item-row" @dragstart="onDragStart($event, sub, t.id || null)">
-                <td style="width: 24px;" class="drag-handle text-center">
-                  <v-icon icon="mdi-drag-vertical" size="small" color="medium-emphasis" />
-                </td>
-                <td>
-                  <v-text-field v-model="sub.name" variant="plain" density="compact" hide-details
-                    placeholder="Item Name" />
-                </td>
-                <td style="width: 50px;">
-                  <v-text-field v-model.number="sub.enc" type="number" variant="plain" density="compact" hide-details
-                    class="text-center" placeholder="0" />
-                </td>
-                <td style="width: 50px;">
-                  <v-text-field v-model.number="sub.qty" type="number" variant="plain" density="compact" hide-details
-                    class="text-center" placeholder="1" />
-                </td>
-                <td style="width: 40px;" class="text-center">
-                  <v-checkbox-btn v-model="sub.worn" density="compact" hide-details color="primary" />
-                </td>
-                <td style="width: 36px;" class="text-right">
-                  <DeleteRowBtn @delete="removeItemFromBag(t, subIdx)" />
-                </td>
-              </tr>
-            </tbody>
-          </v-table>
-        </div>
-        </td>
-        </tr>
+                <BagContainerRow
+                  :bag="t"
+                  :is-open="Boolean(openBags[t.id || String(idx)])"
+                  @add-item="addItemToBag(t)"
+                  @remove-item="removeItemFromBag(t, $event)"
+                  @drop-into-bag="onDropIntoBag($event, t)"
+                  @drag-start-item="onDragStart($event.event, $event.item, t.id || null)"
+                />
 </template>
 </tbody>
 </v-table>
@@ -409,17 +371,12 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
   cursor: grab;
 }
 
-.trapping-item-row:hover,
-.sub-item-row:hover {
+.trapping-item-row:hover {
   background: rgba(var(--v-theme-surface-variant), 0.2);
 }
 
 .bag-row {
   border-left: 3px solid rgb(var(--v-theme-secondary));
-}
-
-.bag-inner-box {
-  background: rgba(var(--v-theme-surface-variant), 0.2);
 }
 
 .cursor-pointer {

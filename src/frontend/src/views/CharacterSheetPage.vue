@@ -10,6 +10,9 @@ import {
   type Skill,
   type MountData
 } from '../constants/placeholders'
+import { ensureBoolArray } from '../utils/arrays'
+import { useEncumbrance } from '../composables/useEncumbrance'
+import { useListManager } from '../composables/useListManager'
 import { characterApi } from '../services/characterApi'
 
 import SheetHeaderBlock from '../components/sheet/SheetHeaderBlock.vue'
@@ -101,93 +104,16 @@ const computedMaxWounds = computed(() => {
   return sb + (tb * 2) + wpb + hardy
 })
 
-const computedMaxEnc = computed(() => getCharBonus('S') + getCharBonus('T'))
-
-const encBreakdown = computed(() => {
-  let weapons = 0
-  character.value.weapons.forEach((w) => {
-    const raw = Number(w.enc) || 0
-    weapons += w.worn ? Math.max(0, raw - 1) : raw
-  })
-
-  let armour = 0
-  character.value.armour.forEach((a) => {
-    const raw = Number(a.enc) || 0
-    armour += a.worn ? Math.max(0, raw - 1) : raw
-  })
-
-  let trappings = 0
-  character.value.trappings.forEach((t) => {
-    const raw = Number(t.enc) || 0
-    const qty = Number(t.qty) || 1
-    const perItem = t.worn ? Math.max(0, raw - 1) : raw
-    trappings += perItem * qty
-  })
-
-  const totalCoins =
-    (Number(character.value.wealth.gc) || 0) +
-    (Number(character.value.wealth.ss) || 0) +
-    (Number(character.value.wealth.bp) || 0)
-  const coins = Math.floor(totalCoins / 200)
-
-  return {
-    weapons,
-    armour,
-    trappings,
-    coins,
-    totalCoins,
-  }
-})
-
-const computedTotalEnc = computed(() => {
-  const b = encBreakdown.value
-  return b.weapons + b.armour + b.trappings + b.coins
-})
-
-// Over-encumbrance penalties (visual only, not persisted)
-const movementPenalty = computed(() => {
-  const tot = computedTotalEnc.value
-  const max = computedMaxEnc.value
-  if (tot <= max) return 0
-  const baseMove = Number(character.value.movement) || 0
-  if (tot > 3 * max) return baseMove
-  if (tot > 2 * max) {
-    const penalized = Math.max(2, baseMove - 2)
-    return Math.max(0, baseMove - penalized)
-  }
-  const penalized = Math.max(3, baseMove - 1)
-  return Math.max(0, baseMove - penalized)
-})
-
-const effectiveMovement = computed(() => {
-  const base = Number(character.value.movement) || 0
-  return Math.max(0, base - movementPenalty.value)
-})
-
-const computedWalk = computed(() => effectiveMovement.value * 2)
-const computedRun = computed(() => effectiveMovement.value * 4)
-
-const agilityPenalty = computed(() => {
-  const tot = computedTotalEnc.value
-  const max = computedMaxEnc.value
-  if (tot <= max) return 0
-  const baseAg = getCharCurrent('Ag')
-  if (tot > 3 * max) return baseAg
-  if (tot > 2 * max) {
-    const penalized = Math.max(10, baseAg - 20)
-    return Math.max(0, baseAg - penalized)
-  }
-  return Math.min(10, baseAg)
-})
-
-const travelFatigue = computed(() => {
-  const tot = computedTotalEnc.value
-  const max = computedMaxEnc.value
-  if (tot <= max) return 0
-  if (tot > 3 * max) return 3
-  if (tot > 2 * max) return 2
-  return 1
-})
+const {
+  computedMaxEnc,
+  encBreakdown,
+  computedTotalEnc,
+  movementPenalty,
+  computedWalk,
+  computedRun,
+  agilityPenalty,
+  travelFatigue,
+} = useEncumbrance(character, getCharBonus, getCharCurrent)
 
 // API / Mock Actions
 async function saveSheet() {
@@ -351,9 +277,9 @@ async function importJson(file: File) {
       spellsHidden: Boolean(rawChar.spellsHidden),
       mountHidden: rawChar.mountHidden !== undefined ? Boolean(rawChar.mountHidden) : true,
       importantCharacteristics: Array.isArray(rawChar.importantCharacteristics) ? rawChar.importantCharacteristics : [],
-      advances2: Array.isArray(rawChar.advances2) && rawChar.advances2.length === 10 ? rawChar.advances2 : Array(10).fill(false),
-      advances3: Array.isArray(rawChar.advances3) && rawChar.advances3.length === 12 ? rawChar.advances3 : Array(12).fill(false),
-      advances4: Array.isArray(rawChar.advances4) && rawChar.advances4.length === 14 ? rawChar.advances4 : Array(14).fill(false),
+      advances2: ensureBoolArray(rawChar.advances2, 10),
+      advances3: ensureBoolArray(rawChar.advances3, 12),
+      advances4: ensureBoolArray(rawChar.advances4, 14),
     }
 
     basicSkills.value = Array.isArray(parsed.basicSkills) ? parsed.basicSkills : blank.basicSkills
@@ -372,73 +298,39 @@ async function importJson(file: File) {
 }
 
 // Add / Remove Row Handlers for Advanced Skills, Languages & items
-function addAdvancedSkill() {
-  advancedSkills.value.push(NEW_ITEM_TEMPLATES.advancedSkill())
-}
-
-function removeAdvancedSkill(index: number) {
-  advancedSkills.value.splice(index, 1)
-}
-
-function addLanguage() {
-  languages.value.push(NEW_ITEM_TEMPLATES.language())
-}
-
-function removeLanguage(index: number) {
-  languages.value.splice(index, 1)
-}
-
-function addTalent() {
-  character.value.talents.push(NEW_ITEM_TEMPLATES.talent())
-}
-
-function removeTalent(index: number) {
-  character.value.talents.splice(index, 1)
-}
-
-function addWeapon() {
-  character.value.weapons.push(NEW_ITEM_TEMPLATES.weapon())
-}
-
-function removeWeapon(index: number) {
-  character.value.weapons.splice(index, 1)
-}
-
-function addArmour() {
-  character.value.armour.push(NEW_ITEM_TEMPLATES.armour())
-}
-
-function removeArmour(index: number) {
-  character.value.armour.splice(index, 1)
-}
-
-function addTrapping() {
-  character.value.trappings.push(NEW_ITEM_TEMPLATES.trapping())
-}
-
-function addBag() {
-  character.value.trappings.push(NEW_ITEM_TEMPLATES.bag())
-}
-
-function removeTrapping(index: number) {
-  character.value.trappings.splice(index, 1)
-}
-
-function addSpell() {
-  character.value.spells.push(NEW_ITEM_TEMPLATES.spell())
-}
-
-function removeSpell(index: number) {
-  character.value.spells.splice(index, 1)
-}
-
-function addMutation() {
-  character.value.mutations.push(NEW_ITEM_TEMPLATES.mutation())
-}
-
-function removeMutation(index: number) {
-  character.value.mutations.splice(index, 1)
-}
+const { add: addAdvancedSkill, remove: removeAdvancedSkill } = useListManager(
+  () => advancedSkills.value,
+  NEW_ITEM_TEMPLATES.advancedSkill
+)
+const { add: addLanguage, remove: removeLanguage } = useListManager(
+  () => languages.value,
+  NEW_ITEM_TEMPLATES.language
+)
+const { add: addTalent, remove: removeTalent } = useListManager(
+  () => character.value.talents,
+  NEW_ITEM_TEMPLATES.talent
+)
+const { add: addWeapon, remove: removeWeapon } = useListManager(
+  () => character.value.weapons,
+  NEW_ITEM_TEMPLATES.weapon
+)
+const { add: addArmour, remove: removeArmour } = useListManager(
+  () => character.value.armour,
+  NEW_ITEM_TEMPLATES.armour
+)
+const { add: addTrapping, remove: removeTrapping } = useListManager(
+  () => character.value.trappings,
+  NEW_ITEM_TEMPLATES.trapping
+)
+const addBag = () => character.value.trappings.push(NEW_ITEM_TEMPLATES.bag())
+const { add: addSpell, remove: removeSpell } = useListManager(
+  () => character.value.spells,
+  NEW_ITEM_TEMPLATES.spell
+)
+const { add: addMutation, remove: removeMutation } = useListManager(
+  () => character.value.mutations,
+  NEW_ITEM_TEMPLATES.mutation
+)
 
 // Mount Row Handlers
 function getMount(): MountData {
@@ -448,49 +340,38 @@ function getMount(): MountData {
   return character.value.mount!
 }
 
-function addMountAttack() {
-  const m = getMount()
-  if (!m.attacks) m.attacks = []
-  m.attacks.push(NEW_ITEM_TEMPLATES.mountAttack())
-}
-
-function removeMountAttack(index: number) {
-  const m = getMount()
-  m.attacks?.splice(index, 1)
-}
-
-function addMountSkill() {
-  const m = getMount()
-  if (!m.skills) m.skills = []
-  m.skills.push(NEW_ITEM_TEMPLATES.advancedSkill())
-}
-
-function removeMountSkill(index: number) {
-  const m = getMount()
-  m.skills?.splice(index, 1)
-}
-
-function addMountTrait() {
-  const m = getMount()
-  if (!m.traits) m.traits = []
-  m.traits.push(NEW_ITEM_TEMPLATES.mountTrait())
-}
-
-function removeMountTrait(index: number) {
-  const m = getMount()
-  m.traits?.splice(index, 1)
-}
-
-function addMountTrapping() {
-  const m = getMount()
-  if (!m.trappings) m.trappings = []
-  m.trappings.push(NEW_ITEM_TEMPLATES.trapping())
-}
-
-function removeMountTrapping(index: number) {
-  const m = getMount()
-  m.trappings?.splice(index, 1)
-}
+const { add: addMountAttack, remove: removeMountAttack } = useListManager(
+  () => {
+    const m = getMount()
+    if (!m.attacks) m.attacks = []
+    return m.attacks
+  },
+  NEW_ITEM_TEMPLATES.mountAttack
+)
+const { add: addMountSkill, remove: removeMountSkill } = useListManager(
+  () => {
+    const m = getMount()
+    if (!m.skills) m.skills = []
+    return m.skills
+  },
+  NEW_ITEM_TEMPLATES.advancedSkill
+)
+const { add: addMountTrait, remove: removeMountTrait } = useListManager(
+  () => {
+    const m = getMount()
+    if (!m.traits) m.traits = []
+    return m.traits
+  },
+  NEW_ITEM_TEMPLATES.mountTrait
+)
+const { add: addMountTrapping, remove: removeMountTrapping } = useListManager(
+  () => {
+    const m = getMount()
+    if (!m.trappings) m.trappings = []
+    return m.trappings
+  },
+  NEW_ITEM_TEMPLATES.trapping
+)
 
 defineExpose({
   saveSheet,

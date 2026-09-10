@@ -88,11 +88,11 @@ const emit = defineEmits<{
 
         <div class="d-flex justify-space-between align-center mb-2">
           <span class="text-caption font-weight-bold text-primary">Mutations:</span>
-          <AddBtn variant="text" @click="emit('addMutation')" />
+          <AddBtn label="Add Mutation" @click="emit('addMutation')" />
         </div>
 
         <div v-if="character.mutations.length === 0" class="text-caption text-medium-emphasis font-italic py-2 text-center">
-          No mutations recorded.
+          No mutations recorded. Click "+ Add Mutation" to add one.
         </div>
 
         <div v-for="(mut, idx) in character.mutations" :key="idx" class="mutation-card pa-2 rounded mb-2 bg-surface-variant border">

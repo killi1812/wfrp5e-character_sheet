@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { MountData, Skill } from '../../constants/placeholders'
+import {
+  type MountData,
+  type Skill,
+  STAT_KEYS,
+  STAT_NAMES,
+  type StatKey,
+} from '../../constants/placeholders'
+import { formatDamage } from '../../utils/damage'
 import SectionCard from '../ui/SectionCard.vue'
 import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
+import CharacteristicCard from '../ui/CharacteristicCard.vue'
 
 const props = defineProps<{
   mount: MountData
@@ -18,21 +26,6 @@ const emit = defineEmits<{
   (e: 'addTrapping'): void
   (e: 'removeTrapping', index: number): void
 }>()
-
-const statKeys = ['WS', 'BS', 'S', 'T', 'I', 'Ag', 'Dex', 'Int', 'WP', 'Fel']
-
-const statNames: Record<string, string> = {
-  WS: 'Weapon Skill',
-  BS: 'Ballistic Skill',
-  S: 'Strength',
-  T: 'Toughness',
-  I: 'Initiative',
-  Ag: 'Agility',
-  Dex: 'Dexterity',
-  Int: 'Intelligence',
-  WP: 'Willpower',
-  Fel: 'Fellowship',
-}
 
 function getMountStatCurrent(code: string): number | null {
   const stat = props.mount.characteristics?.[code]
@@ -51,7 +44,7 @@ function enableStat(code: string) {
     props.mount.characteristics = {}
   }
   props.mount.characteristics[code] = {
-    name: statNames[code] || code,
+    name: STAT_NAMES[code as StatKey] || code,
     initial: 20,
     advances: 0,
     hint: '',
@@ -79,17 +72,6 @@ const mountTotalEnc = computed(() => {
   }
   return total
 })
-
-function formatMountDamage(damage: string): string {
-  if (!damage) return ''
-  const sbMatch = damage.match(/\+?\s*SB\s*\+?\s*(\d+)/i)
-  if (sbMatch) {
-    const bonus = Number(sbMatch[1]) || 0
-    const sb = getMountStatBonus('S')
-    return `${damage} (${sb + bonus})`
-  }
-  return damage
-}
 
 function getMountSkillTotal(skill: Skill): number {
   const base = getMountStatCurrent(skill.characteristic)
@@ -133,7 +115,7 @@ function getMountSkillTotal(skill: Skill): number {
       </div>
       <v-row dense>
         <v-col
-          v-for="code in statKeys"
+          v-for="code in STAT_KEYS"
           :key="code"
           cols="6"
           sm="4"
@@ -141,50 +123,19 @@ function getMountSkillTotal(skill: Skill): number {
           lg="1"
           class="flex-grow-1"
         >
-          <v-card color="surface-variant" variant="outlined" class="pa-2 rounded text-center char-card">
-            <div class="char-header border-bottom pb-1 mb-1 font-weight-bold text-caption d-flex align-center justify-space-between">
-              <span>{{ code }}</span>
-              <v-btn
-                v-if="code === 'BS' || code === 'Dex'"
-                icon
-                size="16"
-                variant="plain"
-                class="opacity-60"
-                :title="mount.characteristics?.[code] ? 'Clear to None' : 'Enable stat'"
-                @click="mount.characteristics?.[code] ? clearStat(code) : enableStat(code)"
-              >
-                <v-icon size="12">{{ mount.characteristics?.[code] ? 'mdi-close' : 'mdi-plus' }}</v-icon>
-              </v-btn>
-            </div>
-
-            <template v-if="mount.characteristics?.[code]">
-              <div class="d-flex justify-space-between text-caption text-medium-emphasis mb-1">
-                <span>Init</span>
-                <input
-                  v-model.number="mount.characteristics[code]!.initial"
-                  type="number"
-                  class="char-input font-weight-medium"
-                />
-              </div>
-              <div class="d-flex justify-space-between text-caption text-medium-emphasis mb-1">
-                <span>Adv</span>
-                <input
-                  v-model.number="mount.characteristics[code]!.advances"
-                  type="number"
-                  class="char-input font-weight-medium"
-                />
-              </div>
-              <div class="border-top pt-1 text-center font-weight-black text-body-2 text-high-emphasis">
-                {{ getMountStatCurrent(code) }}
-              </div>
-            </template>
-            <template v-else>
-              <div class="d-flex flex-column align-center justify-center py-3 text-medium-emphasis text-caption font-italic">
-                <span>—</span>
-                <span class="text-caption" style="font-size: 0.7rem;">(none)</span>
-              </div>
-            </template>
-          </v-card>
+          <CharacteristicCard
+            :code="code"
+            :name="STAT_NAMES[code]"
+            :initial="mount.characteristics?.[code]?.initial"
+            :advances="mount.characteristics?.[code]?.advances"
+            :current="getMountStatCurrent(code) ?? 0"
+            :nullable="code === 'BS' || code === 'Dex'"
+            :is-null="!mount.characteristics?.[code]"
+            :use-badge="false"
+            @update:initial="mount.characteristics[code] && (mount.characteristics[code]!.initial = $event)"
+            @update:advances="mount.characteristics[code] && (mount.characteristics[code]!.advances = $event)"
+            @toggle-nullable="mount.characteristics?.[code] ? clearStat(code) : enableStat(code)"
+          />
         </v-col>
       </v-row>
     </div>
@@ -211,12 +162,12 @@ function getMountSkillTotal(skill: Skill): number {
                 <td style="max-width: 70px;"><v-text-field v-model="att.skillToRoll" variant="plain" density="compact" hide-details placeholder="WS" /></td>
                 <td style="max-width: 50px;"><v-text-field v-model.number="att.displayValue" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" /></td>
                 <td style="max-width: 110px;">
-                  <v-tooltip :text="'Computed: ' + formatMountDamage(att.damage)" location="top" :disabled="!att.damage">
+                  <v-tooltip :text="'Computed: ' + formatDamage(att.damage, getMountStatBonus('S'))" location="top" :disabled="!att.damage">
                     <template #activator="{ props: tProps }">
                       <div v-bind="tProps" class="d-flex align-center">
                         <v-text-field v-model="att.damage" variant="plain" density="compact" hide-details placeholder="+SB+4" />
                         <span v-if="att.damage && att.damage.toLowerCase().includes('sb')" class="text-caption text-primary font-weight-bold ml-1 text-no-wrap">
-                          ({{ formatMountDamage(att.damage).match(/\((\d+)\)/)?.[1] }})
+                          ({{ formatDamage(att.damage, getMountStatBonus('S')).match(/\((\d+)\)/)?.[1] }})
                         </span>
                       </div>
                     </template>
@@ -347,23 +298,5 @@ function getMountSkillTotal(skill: Skill): number {
 <style scoped>
 :deep(td) {
   white-space: normal;
-}
-
-.char-card {
-  min-height: 110px;
-}
-
-.char-input {
-  width: 36px;
-  text-align: right;
-  border-bottom: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
-  outline: none;
-  background: transparent;
-  color: inherit;
-  font-size: 0.8rem;
-}
-
-.char-input:focus {
-  border-bottom: 1px solid rgb(var(--v-theme-primary));
 }
 </style>

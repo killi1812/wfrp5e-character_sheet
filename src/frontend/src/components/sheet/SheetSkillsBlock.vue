@@ -2,6 +2,7 @@
 import type { Skill } from '../../constants/placeholders'
 import SectionCard from '../ui/SectionCard.vue'
 import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
+import ImportantBtn from '../ui/ImportantBtn.vue'
 
 const props = defineProps<{
   basicSkills: Skill[]
@@ -35,22 +36,14 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="skill in basicSkills" :key="skill.name" :class="{ 'skill-important-row': skill.important }">
+            <tr v-for="skill in basicSkills" :key="skill.name" :class="{ 'important-row': skill.important }">
               <td>
-                <div class="d-flex align-center justify-space-between position-relative skill-name-cell">
+                <div class="d-flex align-center justify-space-between position-relative important-trigger-cell">
                   <span class="font-weight-medium text-high-emphasis text-wrap mr-1">{{ skill.name }}</span>
-                  <v-btn
-                    icon
-                    size="x-small"
-                    variant="text"
-                    density="compact"
-                    class="skill-important-btn"
-                    :class="{ 'btn-active': skill.important }"
-                    :title="skill.important ? 'Marked as important' : 'Mark as important'"
-                    @click="skill.important = !skill.important"
-                  >
-                    <v-icon size="14">{{ skill.important ? 'mdi-alert-circle' : 'mdi-alert-circle-outline' }}</v-icon>
-                  </v-btn>
+                  <ImportantBtn
+                    :active="skill.important"
+                    @toggle="skill.important = !skill.important"
+                  />
                 </div>
               </td>
               <td class="text-center text-primary font-weight-bold">{{ skill.characteristic }}</td>
@@ -86,22 +79,15 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(skill, index) in advancedSkills" :key="index" :class="{ 'skill-important-row': skill.important }">
+            <tr v-for="(skill, index) in advancedSkills" :key="index" :class="{ 'important-row': skill.important }">
               <td>
-                <div class="d-flex align-center justify-space-between position-relative skill-name-cell">
+                <div class="d-flex align-center justify-space-between position-relative important-trigger-cell">
                   <input v-model="skill.name" type="text" class="skill-text-input font-weight-medium" placeholder="Skill Name" />
-                  <v-btn
-                    icon
-                    size="x-small"
-                    variant="text"
-                    density="compact"
-                    class="skill-important-btn ml-1"
-                    :class="{ 'btn-active': skill.important }"
-                    :title="skill.important ? 'Marked as important' : 'Mark as important'"
-                    @click="skill.important = !skill.important"
-                  >
-                    <v-icon size="14">{{ skill.important ? 'mdi-alert-circle' : 'mdi-alert-circle-outline' }}</v-icon>
-                  </v-btn>
+                  <ImportantBtn
+                    :active="skill.important"
+                    class="ml-1"
+                    @toggle="skill.important = !skill.important"
+                  />
                 </div>
               </td>
               <td class="text-center">
@@ -187,24 +173,5 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
   padding: 4px 8px !important;
   height: auto !important;
   white-space: normal;
-}
-
-.skill-important-row {
-  background-color: rgba(var(--v-theme-primary), 0.12) !important;
-}
-
-.skill-name-cell .skill-important-btn {
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
-.skill-name-cell:hover .skill-important-btn,
-.skill-important-btn.btn-active {
-  opacity: 1;
-}
-
-.skill-important-btn.btn-active {
-  color: rgb(var(--v-theme-primary)) !important;
 }
 </style>
