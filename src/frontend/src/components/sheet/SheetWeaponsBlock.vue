@@ -37,6 +37,7 @@ function formatDamage(damage: string): string {
           <th>Range/Reach</th>
           <th>Damage</th>
           <th>Qualities / Flaws</th>
+          <th class="text-center" style="width: 50px;">Worn</th>
           <th class="text-right">Action</th>
         </tr>
       </thead>
@@ -58,7 +59,20 @@ function formatDamage(damage: string): string {
               </template>
             </v-tooltip>
           </td>
-          <td><v-text-field v-model="w.qualities" variant="plain" density="compact" hide-details placeholder="Qualities..." /></td>
+          <td>
+            <v-textarea
+              v-model="w.qualities"
+              variant="plain"
+              density="compact"
+              rows="1"
+              auto-grow
+              hide-details
+              placeholder="Qualities..."
+            />
+          </td>
+          <td class="text-center" style="width: 50px;">
+            <v-checkbox-btn v-model="w.worn" density="compact" hide-details color="primary" />
+          </td>
           <td class="text-right"><DeleteRowBtn @delete="emit('removeWeapon', idx)" /></td>
         </tr>
       </tbody>

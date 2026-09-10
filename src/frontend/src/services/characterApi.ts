@@ -2,6 +2,7 @@
 import {
   type CharacterModel,
   type Skill,
+  type TrappingItem,
   DEFAULT_CHARACTER,
   DEFAULT_BASIC_SKILLS,
   DEFAULT_ADVANCED_SKILLS,
@@ -304,21 +305,112 @@ class CharacterApiService {
       }
     }
 
+    const mapTrappingFromBackend = (t: any): any => ({
+      id: t.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `item-${Math.random().toString(36).slice(2, 7)}`),
+      name: t.name || '',
+      category: t.category || '',
+      enc: Number(t.enc) || 0,
+      qty: Number(t.qty) || 1,
+      desc: t.description || t.desc || '',
+      worn: Boolean(t.worn),
+      isBag: Boolean(t.isBag),
+      bagSize: Number(t.bagSize) || 0,
+      containedTrappings: Array.isArray(t.containedTrappings) ? t.containedTrappings.map(mapTrappingFromBackend) : [],
+    })
+
+    const careers: any[] = Array.isArray(backendData.careers) && backendData.careers.length > 0
+      ? backendData.careers.map((c: any) => ({
+          class: c.class || '',
+          career: c.career || '',
+          status: c.status || '',
+          active: Boolean(c.active),
+          advances2: Array.isArray(c.advances2) && c.advances2.length === 10 ? c.advances2 : Array(10).fill(false),
+          advances3: Array.isArray(c.advances3) && c.advances3.length === 12 ? c.advances3 : Array(12).fill(false),
+          advances4: Array.isArray(c.advances4) && c.advances4.length === 14 ? c.advances4 : Array(14).fill(false),
+        }))
+      : [
+          {
+            class: backendData.class || '',
+            career: backendData.career || '',
+            status: backendData.status || '',
+            active: true,
+            advances2: Array.isArray(backendData.advances2) && backendData.advances2.length === 10 ? backendData.advances2 : Array(10).fill(false),
+            advances3: Array.isArray(backendData.advances3) && backendData.advances3.length === 12 ? backendData.advances3 : Array(12).fill(false),
+            advances4: Array.isArray(backendData.advances4) && backendData.advances4.length === 14 ? backendData.advances4 : Array(14).fill(false),
+          },
+        ]
+
+    const importantTalentsSet = new Set(backendData.importantTalents || [])
+    const importantSkillsSet = new Set(backendData.importantSkills || [])
+
+    // Map Mount
+    let mount = blank.character.mount
+    if (backendData.mount) {
+      const bm = backendData.mount
+      const mChars: any = { ...blank.character.mount?.characteristics }
+      if (bm.characteristics) {
+        for (const code of ['WS', 'BS', 'S', 'T', 'I', 'Ag', 'Dex', 'Int', 'WP', 'Fel']) {
+          const lower = code.toLowerCase()
+          const bStat = bm.characteristics[lower]
+          if (bStat) {
+            mChars[code] = {
+              name: code,
+              initial: Number(bStat.initial) || 0,
+              advances: Number(bStat.advances) || 0,
+              hint: '',
+            }
+          } else {
+            mChars[code] = null
+          }
+        }
+      }
+      mount = {
+        name: bm.name || '',
+        characteristics: mChars,
+        attacks: Array.isArray(bm.attacks)
+          ? bm.attacks.map((a: any) => ({
+              name: a.name || '',
+              skillToRoll: a.skillToRoll || '',
+              displayValue: Number(a.displayValue) || 0,
+              damage: a.damage || '',
+              qualities: a.qualities || '',
+            }))
+          : [],
+        skills: Array.isArray(bm.skills)
+          ? bm.skills.map((s: any) => ({
+              name: s.name || '',
+              characteristic: s.characteristic || 'WS',
+              adv: Number(s.adv) || 0,
+            }))
+          : [],
+        traits: Array.isArray(bm.traits)
+          ? bm.traits.map((tr: any) => ({
+              name: tr.name || '',
+              desc: tr.description || tr.desc || '',
+            }))
+          : [],
+        trappings: Array.isArray(bm.trappings) ? bm.trappings.map(mapTrappingFromBackend) : [],
+      }
+    }
+
     const character: CharacterModel = {
       ...blank.character,
       name: backendData.name || '',
       species: backendData.species || '',
       appearance: backendData.appearance || '',
-      class: backendData.class || '',
-      career: backendData.career || '',
-      status: backendData.status || '',
+      class: backendData.class || careers.find((c) => c.active)?.class || '',
+      career: backendData.career || careers.find((c) => c.active)?.career || '',
+      careers,
+      status: backendData.status || careers.find((c) => c.active)?.status || '',
       movement: backendData.movement || 4,
       xp: {
         current: backendData.xpCurrent || 0,
         spent: backendData.xpSpent || 0,
       },
       fate: backendData.fate || 0,
+      fateMax: backendData.fateMax !== undefined ? Number(backendData.fateMax) : (backendData.fate || 0),
       fortune: backendData.fortune || 0,
+      fortuneMax: backendData.fortuneMax !== undefined ? Number(backendData.fortuneMax) : (backendData.fortune || 0),
       personalAmbition: backendData.personalAmbition || '',
       partyAmbition: backendData.partyAmbition || '',
       notes: backendData.notes || '',
@@ -347,12 +439,13 @@ class CharacterApiService {
         shield: backendData.armourPoints?.shield || 0,
       },
       advances2: Array.isArray(backendData.advances2) && backendData.advances2.length === 10 ? backendData.advances2 : Array(10).fill(false),
-      advances3: Array.isArray(backendData.advances3) && backendData.advances3.length === 10 ? backendData.advances3 : Array(10).fill(false),
-      advances4: Array.isArray(backendData.advances4) && backendData.advances4.length === 10 ? backendData.advances4 : Array(10).fill(false),
+      advances3: Array.isArray(backendData.advances3) && backendData.advances3.length === 12 ? backendData.advances3 : Array(12).fill(false),
+      advances4: Array.isArray(backendData.advances4) && backendData.advances4.length === 14 ? backendData.advances4 : Array(14).fill(false),
       talents: Array.isArray(backendData.talents)
         ? backendData.talents.map((t: any) => ({
             name: t.name || '',
             desc: t.description || t.desc || '',
+            important: importantTalentsSet.has(t.name),
           }))
         : [],
       weapons: Array.isArray(backendData.weapons)
@@ -363,6 +456,7 @@ class CharacterApiService {
             rangeReach: w.rangeReach || '',
             damage: w.damage || '',
             qualities: w.qualities || '',
+            worn: Boolean(w.worn),
           }))
         : [],
       armour: Array.isArray(backendData.armour)
@@ -372,16 +466,11 @@ class CharacterApiService {
             enc: Number(a.enc) || 0,
             ap: Number(a.ap) || 0,
             qualities: a.qualities || '',
+            worn: Boolean(a.worn),
           }))
         : [],
       trappings: Array.isArray(backendData.trappings)
-        ? backendData.trappings.map((t: any) => ({
-            name: t.name || '',
-            category: t.category || '',
-            enc: Number(t.enc) || 0,
-            qty: Number(t.qty) || 1,
-            desc: t.description || t.desc || '',
-          }))
+        ? backendData.trappings.map(mapTrappingFromBackend)
         : [],
       spells: Array.isArray(backendData.spellsAndPrayers)
         ? backendData.spellsAndPrayers.map((s: any) => ({
@@ -399,6 +488,10 @@ class CharacterApiService {
             effect: m.effect || '',
           }))
         : [],
+      mount,
+      spellsHidden: Boolean(backendData.spellsHidden),
+      mountHidden: backendData.mountHidden !== undefined ? Boolean(backendData.mountHidden) : true,
+      importantCharacteristics: Array.isArray(backendData.importantCharacteristics) ? backendData.importantCharacteristics : [],
     }
 
     return {
@@ -407,16 +500,19 @@ class CharacterApiService {
         name: s.name || '',
         characteristic: s.characteristic || 'WS',
         adv: Number(s.adv) || 0,
+        important: importantSkillsSet.has(s.name),
       })) || blank.basicSkills,
       advancedSkills: backendData.skills?.filter((s: any) => s.type === 'Advanced').map((s: any) => ({
         name: s.name || '',
         characteristic: s.characteristic || 'WS',
         adv: Number(s.adv) || 0,
+        important: importantSkillsSet.has(s.name),
       })) || [],
       languages: backendData.languages?.map((l: any) => ({
         name: l.name || '',
         characteristic: 'Int',
         adv: Number(l.adv) || 0,
+        important: importantSkillsSet.has(l.name),
       })) || [],
     }
   }
@@ -440,18 +536,40 @@ class CharacterApiService {
       }
     }
 
+    const serializeTrapping = (t: TrappingItem): any => ({
+      name: t.name || '',
+      category: t.category || '',
+      enc: Number(t.enc) || 0,
+      description: t.desc || '',
+      worn: Boolean(t.worn),
+      isBag: Boolean(t.isBag),
+      bagSize: Number(t.bagSize) || 0,
+      containedTrappings: Array.isArray(t.containedTrappings) ? t.containedTrappings.map(serializeTrapping) : [],
+    })
+
+    const activeCareer = character.careers.find((c) => c.active) || character.careers[0]
+
     return {
       uuid,
       name: character.name,
       species: character.species,
       appearance: character.appearance,
-      class: character.class,
-      career: character.career,
-      status: character.status,
+      class: activeCareer?.class || character.class || '',
+      career: activeCareer?.career || character.career || '',
+      careers: character.careers.map((c) => ({
+        class: c.class || '',
+        career: c.career || '',
+        status: c.status || '',
+        active: Boolean(c.active),
+        advances2: c.advances2,
+        advances3: c.advances3,
+        advances4: c.advances4,
+      })),
+      status: activeCareer?.status || character.status || '',
       movement: Number(character.movement) || 4,
-      advances2: character.advances2,
-      advances3: character.advances3,
-      advances4: character.advances4,
+      advances2: activeCareer?.advances2 || character.advances2,
+      advances3: activeCareer?.advances3 || character.advances3,
+      advances4: activeCareer?.advances4 || character.advances4,
       xpCurrent: Number(character.xp?.current) || 0,
       xpSpent: Number(character.xp?.spent) || 0,
       xpTotal: (Number(character.xp?.current) || 0) + (Number(character.xp?.spent) || 0),
@@ -468,7 +586,9 @@ class CharacterApiService {
         fel: mapStat('Fel'),
       },
       fate: Number(character.fate) || 0,
+      fateMax: Number(character.fateMax) || 0,
       fortune: Number(character.fortune) || 0,
+      fortuneMax: Number(character.fortuneMax) || 0,
       personalAmbition: character.personalAmbition || '',
       partyAmbition: character.partyAmbition || '',
       notes: character.notes || '',
@@ -494,6 +614,13 @@ class CharacterApiService {
       },
       mutations: character.mutations.map((m) => ({ name: m.name || '', effect: m.effect || '' })),
       talents: character.talents.map((t) => ({ name: t.name || '', description: t.desc || '', page: '' })),
+      importantTalents: character.talents.filter((t) => t.important).map((t) => t.name),
+      importantSkills: [
+        ...basicSkills.filter((s) => s.important).map((s) => s.name),
+        ...advancedSkills.filter((s) => s.important).map((s) => s.name),
+        ...languages.filter((l) => l.important).map((l) => l.name),
+      ],
+      importantCharacteristics: character.importantCharacteristics || [],
       weapons: character.weapons.map((w) => ({
         name: w.name || '',
         group: w.group || '',
@@ -501,6 +628,7 @@ class CharacterApiService {
         rangeReach: w.rangeReach || '',
         damage: w.damage || '',
         qualities: w.qualities || '',
+        worn: Boolean(w.worn),
       })),
       armour: character.armour.map((a) => ({
         name: a.name || '',
@@ -508,13 +636,9 @@ class CharacterApiService {
         enc: Number(a.enc) || 0,
         ap: Number(a.ap) || 0,
         qualities: a.qualities || '',
+        worn: Boolean(a.worn),
       })),
-      trappings: character.trappings.map((t) => ({
-        name: t.name || '',
-        category: t.category || '',
-        enc: Number(t.enc) || 0,
-        description: t.desc || '',
-      })),
+      trappings: character.trappings.map(serializeTrapping),
       spellsAndPrayers: character.spells.map((s) => ({
         name: s.name || '',
         cn: Number(s.cn) || 0,
@@ -529,6 +653,42 @@ class CharacterApiService {
         ...advancedSkills.map((s) => ({ name: s.name, characteristic: s.characteristic, adv: Number(s.adv) || 0, total: 0, type: 'Advanced' })),
       ],
       languages: languages.map((l) => ({ name: l.name, int: 0, adv: Number(l.adv) || 0, skill: 0 })),
+      spellsHidden: Boolean(character.spellsHidden),
+      mountHidden: Boolean(character.mountHidden),
+      mount: character.mount ? {
+        name: character.mount.name || '',
+        characteristics: {
+          ws: character.mount.characteristics.WS ? { initial: Number(character.mount.characteristics.WS.initial) || 0, current: (Number(character.mount.characteristics.WS.initial) || 0) + (Number(character.mount.characteristics.WS.advances) || 0) } : null,
+          bs: character.mount.characteristics.BS ? { initial: Number(character.mount.characteristics.BS.initial) || 0, current: (Number(character.mount.characteristics.BS.initial) || 0) + (Number(character.mount.characteristics.BS.advances) || 0) } : null,
+          s: character.mount.characteristics.S ? { initial: Number(character.mount.characteristics.S.initial) || 0, current: (Number(character.mount.characteristics.S.initial) || 0) + (Number(character.mount.characteristics.S.advances) || 0) } : null,
+          t: character.mount.characteristics.T ? { initial: Number(character.mount.characteristics.T.initial) || 0, current: (Number(character.mount.characteristics.T.initial) || 0) + (Number(character.mount.characteristics.T.advances) || 0) } : null,
+          i: character.mount.characteristics.I ? { initial: Number(character.mount.characteristics.I.initial) || 0, current: (Number(character.mount.characteristics.I.initial) || 0) + (Number(character.mount.characteristics.I.advances) || 0) } : null,
+          ag: character.mount.characteristics.Ag ? { initial: Number(character.mount.characteristics.Ag.initial) || 0, current: (Number(character.mount.characteristics.Ag.initial) || 0) + (Number(character.mount.characteristics.Ag.advances) || 0) } : null,
+          dex: character.mount.characteristics.Dex ? { initial: Number(character.mount.characteristics.Dex.initial) || 0, current: (Number(character.mount.characteristics.Dex.initial) || 0) + (Number(character.mount.characteristics.Dex.advances) || 0) } : null,
+          int: character.mount.characteristics.Int ? { initial: Number(character.mount.characteristics.Int.initial) || 0, current: (Number(character.mount.characteristics.Int.initial) || 0) + (Number(character.mount.characteristics.Int.advances) || 0) } : null,
+          wp: character.mount.characteristics.WP ? { initial: Number(character.mount.characteristics.WP.initial) || 0, current: (Number(character.mount.characteristics.WP.initial) || 0) + (Number(character.mount.characteristics.WP.advances) || 0) } : null,
+          fel: character.mount.characteristics.Fel ? { initial: Number(character.mount.characteristics.Fel.initial) || 0, current: (Number(character.mount.characteristics.Fel.initial) || 0) + (Number(character.mount.characteristics.Fel.advances) || 0) } : null,
+        },
+        attacks: character.mount.attacks.map((a) => ({
+          name: a.name || '',
+          skillToRoll: a.skillToRoll || '',
+          displayValue: Number(a.displayValue) || 0,
+          damage: a.damage || '',
+          qualities: a.qualities || '',
+        })),
+        skills: character.mount.skills.map((s) => ({
+          name: s.name || '',
+          characteristic: s.characteristic || 'WS',
+          adv: Number(s.adv) || 0,
+          total: 0,
+          type: 'Advanced',
+        })),
+        traits: character.mount.traits.map((tr) => ({
+          name: tr.name || '',
+          description: tr.desc || '',
+        })),
+        trappings: character.mount.trappings.map(serializeTrapping),
+      } : null,
     }
   }
 }

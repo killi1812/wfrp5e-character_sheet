@@ -93,6 +93,7 @@ type WeaponItem struct {
 	RangeReach string `json:"rangeReach" bson:"range_reach"`
 	Damage     string `json:"damage" bson:"damage"`
 	Qualities  string `json:"qualities" bson:"qualities"`
+	Worn       bool   `json:"worn" bson:"worn"`
 }
 
 type ArmourItem struct {
@@ -101,13 +102,18 @@ type ArmourItem struct {
 	Enc       int    `json:"enc" bson:"enc"`
 	AP        int    `json:"ap" bson:"ap"`
 	Qualities string `json:"qualities" bson:"qualities"`
+	Worn      bool   `json:"worn" bson:"worn"`
 }
 
 type TrappingItem struct {
-	Name        string `json:"name" bson:"name"`
-	Category    string `json:"category" bson:"category"`
-	Enc         int    `json:"enc" bson:"enc"`
-	Description string `json:"description" bson:"description"`
+	Name               string         `json:"name" bson:"name"`
+	Category           string         `json:"category" bson:"category"`
+	Enc                int            `json:"enc" bson:"enc"`
+	Description        string         `json:"description" bson:"description"`
+	Worn               bool           `json:"worn" bson:"worn"`
+	IsBag              bool           `json:"isBag" bson:"is_bag"`
+	BagSize            int            `json:"bagSize" bson:"bag_size"`
+	ContainedTrappings []TrappingItem `json:"containedTrappings,omitempty" bson:"contained_trappings,omitempty"`
 }
 
 type SpellItem struct {
@@ -127,24 +133,73 @@ type CareerAdvancementTracker struct {
 	Tier4 bool `json:"tier4" bson:"tier4"`
 }
 
+type CareerEntry struct {
+	Class     string `json:"class" bson:"class"`
+	Career    string `json:"career" bson:"career"`
+	Status    string `json:"status" bson:"status"`
+	Active    bool   `json:"active" bson:"active"`
+	Advances2 []bool `json:"advances2,omitempty" bson:"advances2,omitempty"`
+	Advances3 []bool `json:"advances3,omitempty" bson:"advances3,omitempty"`
+	Advances4 []bool `json:"advances4,omitempty" bson:"advances4,omitempty"`
+}
+
+type MountAttack struct {
+	Name         string `json:"name" bson:"name"`
+	SkillToRoll  string `json:"skillToRoll" bson:"skill_to_roll"`
+	DisplayValue int    `json:"displayValue" bson:"display_value"`
+	Damage       string `json:"damage" bson:"damage"`
+	Qualities    string `json:"qualities" bson:"qualities"`
+}
+
+type MountTrait struct {
+	Name        string `json:"name" bson:"name"`
+	Description string `json:"description" bson:"description"`
+}
+
+type MountCharacteristics struct {
+	WS  *StatValue `json:"ws,omitempty" bson:"ws,omitempty"`
+	BS  *StatValue `json:"bs,omitempty" bson:"bs,omitempty"`
+	S   *StatValue `json:"s,omitempty" bson:"s,omitempty"`
+	T   *StatValue `json:"t,omitempty" bson:"t,omitempty"`
+	I   *StatValue `json:"i,omitempty" bson:"i,omitempty"`
+	Ag  *StatValue `json:"ag,omitempty" bson:"ag,omitempty"`
+	Dex *StatValue `json:"dex,omitempty" bson:"dex,omitempty"`
+	Int *StatValue `json:"int,omitempty" bson:"int,omitempty"`
+	WP  *StatValue `json:"wp,omitempty" bson:"wp,omitempty"`
+	Fel *StatValue `json:"fel,omitempty" bson:"fel,omitempty"`
+}
+
+type MountData struct {
+	Name            string               `json:"name" bson:"name"`
+	Characteristics MountCharacteristics `json:"characteristics" bson:"characteristics"`
+	Attacks         []MountAttack        `json:"attacks" bson:"attacks"`
+	Skills          []Skill              `json:"skills" bson:"skills"`
+	Traits          []MountTrait         `json:"traits" bson:"traits"`
+	Trappings       []TrappingItem       `json:"trappings" bson:"trappings"`
+}
+
 type CharacterSheet struct {
 	ID       bson.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 	Uuid     uuid.UUID     `json:"uuid" bson:"uuid"`
 	UserUuid uuid.UUID     `json:"userUuid" bson:"user_uuid"`
 
 	// Header Info
-	Name              string                   `json:"name" bson:"name"`
-	Species           string                   `json:"species" bson:"species"`
-	Appearance        string                   `json:"appearance" bson:"appearance"`
-	Class             string                   `json:"class" bson:"class"`
-	Career            string                   `json:"career" bson:"career"`
-	CareerLevel       int                      `json:"careerLevel" bson:"career_level"`
-	CareerPath        string                   `json:"careerPath" bson:"career_path"`
-	CareerAdvancement CareerAdvancementTracker `json:"careerAdvancement" bson:"career_advancement"`
-	Advances2         []bool                   `json:"advances2,omitempty" bson:"advances2,omitempty"`
-	Advances3         []bool                   `json:"advances3,omitempty" bson:"advances3,omitempty"`
-	Advances4         []bool                   `json:"advances4,omitempty" bson:"advances4,omitempty"`
-	Status            string                   `json:"status" bson:"status"`
+	Name                     string                   `json:"name" bson:"name"`
+	Species                  string                   `json:"species" bson:"species"`
+	Appearance               string                   `json:"appearance" bson:"appearance"`
+	Class                    string                   `json:"class" bson:"class"`
+	Career                   string                   `json:"career" bson:"career"`
+	CareerLevel              int                      `json:"careerLevel" bson:"career_level"`
+	CareerPath               string                   `json:"careerPath" bson:"career_path"`
+	CareerAdvancement        CareerAdvancementTracker `json:"careerAdvancement" bson:"career_advancement"`
+	Careers                  []CareerEntry            `json:"careers,omitempty" bson:"careers,omitempty"`
+	Advances2                []bool                   `json:"advances2,omitempty" bson:"advances2,omitempty"`
+	Advances3                []bool                   `json:"advances3,omitempty" bson:"advances3,omitempty"`
+	Advances4                []bool                   `json:"advances4,omitempty" bson:"advances4,omitempty"`
+	Status                   string                   `json:"status" bson:"status"`
+	ImportantCharacteristics []string                 `json:"importantCharacteristics,omitempty" bson:"important_characteristics,omitempty"`
+	ImportantSkills          []string                 `json:"importantSkills,omitempty" bson:"important_skills,omitempty"`
+	ImportantTalents         []string                 `json:"importantTalents,omitempty" bson:"important_talents,omitempty"`
 
 	// XP
 	XpCurrent int `json:"xpCurrent" bson:"xp_current"`
@@ -156,7 +211,9 @@ type CharacterSheet struct {
 
 	// Fate & Fortune, Resilience & Resolve, Movement
 	Fate       int `json:"fate" bson:"fate"`
+	FateMax    int `json:"fateMax" bson:"fate_max"`
 	Fortune    int `json:"fortune" bson:"fortune"`
+	FortuneMax int `json:"fortuneMax" bson:"fortune_max"`
 	Resilience int `json:"resilience" bson:"resilience"`
 	Resolve    int `json:"resolve" bson:"resolve"`
 	Movement   int `json:"movement" bson:"movement"`
@@ -182,6 +239,9 @@ type CharacterSheet struct {
 	Armour           []ArmourItem   `json:"armour" bson:"armour"`
 	Trappings        []TrappingItem `json:"trappings" bson:"trappings"`
 	SpellsAndPrayers []SpellItem    `json:"spellsAndPrayers" bson:"spells_and_prayers"`
+	Mount            *MountData     `json:"mount,omitempty" bson:"mount,omitempty"`
+	SpellsHidden     bool           `json:"spellsHidden" bson:"spells_hidden"`
+	MountHidden      bool           `json:"mountHidden" bson:"mount_hidden"`
 	Notes            string         `json:"notes" bson:"notes"`
 
 	CreatedAt time.Time `json:"createdAt" bson:"created_at"`

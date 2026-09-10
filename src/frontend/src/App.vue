@@ -140,8 +140,8 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
 <template>
   <v-app class="wfrp-full-app bg-background text-on-background">
-    <!-- Floating Kebab Button -->
-    <div class="kebab-fixed-pos">
+    <!-- Floating Kebab Button (only on admin page; on sheet page it is in the actions card) -->
+    <div v-if="currentPage === 'admin'" class="kebab-fixed-pos">
       <v-tooltip text="System Options & Settings" location="left">
         <template #activator="{ props: tooltipProps }">
           <v-btn
@@ -276,7 +276,7 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
     <!-- PAGE CONDITIONAL RENDERING -->
     <template v-if="currentPage === 'sheet'">
-      <CharacterSheetPage ref="sheetRef" />
+      <CharacterSheetPage ref="sheetRef" @open-menu="showKebabOverlay = true" />
     </template>
 
     <!-- STANDALONE ADMIN PAGE VIEW -->

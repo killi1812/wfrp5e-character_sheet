@@ -1,66 +1,160 @@
 <script setup lang="ts">
-import type { CharacterModel } from '../../constants/placeholders'
+import { computed } from 'vue'
+import type { CharacterModel, CareerEntry } from '../../constants/placeholders'
+import { NEW_ITEM_TEMPLATES } from '../../constants/placeholders'
 import TooltipField from '../ui/TooltipField.vue'
 import SectionCard from '../ui/SectionCard.vue'
+import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
 
-defineProps<{
+const props = defineProps<{
   character: CharacterModel
   computedWalk: number
   computedRun: number
   computedMaxWounds: number
+  movementPenalty?: number
+  travelFatigue?: number
 }>()
+
+const effectiveMovement = computed(() => {
+  const base = Number(props.character.movement) || 0
+  const penalty = props.movementPenalty || 0
+  return Math.max(0, base - penalty)
+})
+
+function addCareer() {
+  if (!props.character.careers) {
+    props.character.careers = []
+  }
+  const isFirst = props.character.careers.length === 0
+  const newC = NEW_ITEM_TEMPLATES.career()
+  newC.active = isFirst
+  props.character.careers.push(newC)
+  if (isFirst) {
+    syncActiveCareer(newC)
+  }
+}
+
+function removeCareer(index: number) {
+  if (props.character.careers.length <= 1) return
+  const wasActive = props.character.careers[index].active
+  props.character.careers.splice(index, 1)
+  if (wasActive && props.character.careers.length > 0) {
+    props.character.careers[0].active = true
+    syncActiveCareer(props.character.careers[0])
+  }
+}
+
+function setActiveCareer(index: number) {
+  props.character.careers.forEach((c, idx) => {
+    c.active = idx === index
+  })
+  syncActiveCareer(props.character.careers[index])
+}
+
+function syncActiveCareer(c: CareerEntry) {
+  props.character.career = c.career
+  props.character.class = c.class
+  props.character.status = c.status
+}
 </script>
 
 <template>
-  <v-row dense class="mb-4">
-    <!-- Movement, Fate, Wounds & Experience (4 cols) -->
-    <v-col cols="12" md="4">
+  <div class="d-flex flex-wrap gap-3 mb-4 vitals-careers-row">
+    <!-- Movement, Fate & Wounds (30% on desktop) -->
+    <div class="vitals-col">
       <SectionCard title="Movement, Fate & Wounds" full-height>
         <!-- Movement Row -->
-        <v-row dense class="mb-2">
-          <v-col cols="4">
-            <v-text-field v-model.number="character.movement" label="Move" type="number" variant="outlined" density="compact" hide-details />
-          </v-col>
-          <v-col cols="4">
-            <TooltipField :model-value="computedWalk" label="Walk (yd)" readonly variant="filled" tooltip="Walk distance = Move x 2 yards" />
-          </v-col>
-          <v-col cols="4">
-            <TooltipField :model-value="computedRun" label="Run (yd)" readonly variant="filled" tooltip="Run distance = Move x 4 yards" />
-          </v-col>
-        </v-row>
+        <div class="mb-3 pa-2 rounded border bg-surface-variant">
+          <div class="text-caption font-weight-bold text-primary mb-1">Movement</div>
+          <v-row dense class="mb-1">
+            <v-col cols="4">
+              <v-text-field
+                :model-value="effectiveMovement"
+                label="Move"
+                type="number"
+                variant="outlined"
+                density="compact"
+                hide-details
+                @update:model-value="character.movement = Number($event) || 0"
+              />
+            </v-col>
+            <v-col cols="4">
+              <TooltipField :model-value="computedWalk" label="Walk (yd)" readonly variant="filled" tooltip="Walk distance = Move x 2 yards" />
+            </v-col>
+            <v-col cols="4">
+              <TooltipField :model-value="computedRun" label="Run (yd)" readonly variant="filled" tooltip="Run distance = Move x 4 yards" />
+            </v-col>
+          </v-row>
 
-        <!-- Fate & Fortune Row -->
-        <v-row dense class="mb-2">
-          <v-col cols="6">
-            <TooltipField v-model.number="character.fate" label="Fate" type="number" tooltip="Fate points allow surviving fatal blows" />
-          </v-col>
-          <v-col cols="6">
-            <TooltipField v-model.number="character.fortune" label="Fortune" type="number" tooltip="Fortune points reset daily to re-roll tests" />
-          </v-col>
-        </v-row>
+          <!-- Encumbrance penalties under Movement -->
+          <div v-if="(movementPenalty || 0) > 0" class="text-caption text-error font-weight-bold mt-1 px-1">
+            Base Move: {{ character.movement }} (-{{ movementPenalty }} Encumbrance)
+          </div>
+          <div v-if="(travelFatigue || 0) > 0" class="text-caption text-warning font-weight-black mt-1 px-1 d-flex align-center">
+            <v-icon icon="mdi-alert" size="small" class="mr-1" />
+            Travel Fatigue: +{{ travelFatigue }}
+          </div>
+        </div>
 
-        <!-- Wounds Row -->
-        <v-row dense class="mb-2">
-          <v-col cols="6">
-            <v-text-field v-model.number="character.wounds.current" label="Current Wounds" type="number" variant="outlined" density="compact" hide-details />
-          </v-col>
-          <v-col cols="6">
-            <TooltipField :model-value="computedMaxWounds" label="Max Wounds" readonly variant="filled" tooltip="Max Wounds = SB + (TB x 2) + WPB + Hardy" field-class="font-weight-bold" />
-          </v-col>
-        </v-row>
+        <!-- Fate & Fortune (Single row with tight spacing and subtle separator) -->
+        <div class="mb-3 pa-2 rounded border bg-surface-variant">
+          <div class="text-caption font-weight-bold text-primary mb-1">Fate & Fortune</div>
+          <div class="d-flex align-center" style="gap: 4px;">
+            <div style="flex: 1 1 0; min-width: 0;">
+              <TooltipField v-model.number="character.fate" label="Fate" type="number" tooltip="Current Fate points (survive fatal blows)" />
+            </div>
+            <div style="flex: 1 1 0; min-width: 0;">
+              <TooltipField v-model.number="character.fateMax" label="Max Fate" type="number" tooltip="Max Fate pool" />
+            </div>
+            <v-divider vertical class="mx-1 align-self-stretch" style="opacity: 0.3;" />
+            <div style="flex: 1 1 0; min-width: 0;">
+              <TooltipField v-model.number="character.fortune" label="Fortune" type="number" tooltip="Current Fortune points (re-roll tests)" />
+            </div>
+            <div style="flex: 1 1 0; min-width: 0;">
+              <TooltipField v-model.number="character.fortuneMax" label="Max Fortune" type="number" tooltip="Max Fortune pool" />
+            </div>
+          </div>
+        </div>
 
-        <!-- Hardy Bonus Row -->
-        <v-row dense class="mb-2">
-          <v-col cols="12">
-            <v-text-field v-model.number="character.wounds.hardy" label="Hardy Talent Bonus Wounds" type="number" variant="outlined" density="compact" hide-details />
-          </v-col>
-        </v-row>
+        <!-- Wounds (Single row with tight spacing and subtle separator for Hardy) -->
+        <div class="mb-3 pa-2 rounded border bg-surface-variant">
+          <div class="text-caption font-weight-bold text-primary mb-1">Wounds</div>
+          <div class="d-flex align-center" style="gap: 4px;">
+            <div style="flex: 1 1 0; min-width: 0;">
+              <TooltipField
+                v-model.number="character.wounds.current"
+                label="Current"
+                type="number"
+                tooltip="Current Wounds"
+              />
+            </div>
+            <div style="flex: 1 1 0; min-width: 0;">
+              <TooltipField
+                :model-value="computedMaxWounds"
+                label="Max"
+                readonly
+                variant="filled"
+                tooltip="Max Wounds = SB + (TB x 2) + WPB + Hardy"
+                field-class="font-weight-bold"
+              />
+            </div>
+            <v-divider vertical class="mx-1 align-self-stretch" style="opacity: 0.3;" />
+            <div style="flex: 1 1 0; min-width: 0;">
+              <TooltipField
+                v-model.number="character.wounds.hardy"
+                label="Hardy"
+                type="number"
+                tooltip="Hardy talent bonus wounds"
+              />
+            </div>
+          </div>
+        </div>
 
-        <!-- Experience (XP) Row (Moved into Movement/Vitals box) -->
-        <div class="d-flex gap-1 align-center mt-2 pt-2 border-t">
-          <TooltipField v-model.number="character.xp.current" label="Current XP" type="number" tooltip="Experience points currently available to spend" />
-          <TooltipField v-model.number="character.xp.spent" label="Spent XP" type="number" tooltip="Total experience points spent on advances" />
-          <v-tooltip text="Total XP earned over career (Current + Spent)" location="top">
+        <!-- Experience (XP) Row -->
+        <div class="d-flex gap-1 align-center pt-2 border-t">
+          <TooltipField v-model.number="character.xp.current" label="Current XP" type="number" tooltip="Experience points available to spend" />
+          <TooltipField v-model.number="character.xp.spent" label="Spent XP" type="number" tooltip="Total experience points spent" />
+          <v-tooltip text="Total XP earned over career (Current + Spent)" location="top" :open-on-focus="false">
             <template #activator="{ props: tProps }">
               <v-chip v-bind="tProps" color="primary" variant="tonal" class="font-weight-bold ml-1">
                 {{ (character.xp.current || 0) + (character.xp.spent || 0) }} Total
@@ -69,235 +163,221 @@ defineProps<{
           </v-tooltip>
         </div>
       </SectionCard>
-    </v-col>
+    </div>
 
-    <!-- Career & Advances (5 cols - expanded space) -->
-    <v-col cols="12" md="5">
-      <SectionCard title="Career & Advances" full-height>
-        <!-- Class, Career, Status (Moved into Career box) -->
-        <v-row dense class="mb-3">
-          <v-col cols="4">
-            <v-text-field v-model="character.class" label="Class" variant="outlined" density="compact" hide-details placeholder="Academic..." />
-          </v-col>
-          <v-col cols="5">
-            <v-text-field v-model="character.career" label="Career" variant="outlined" density="compact" hide-details placeholder="Wizard..." />
-          </v-col>
-          <v-col cols="3">
-            <v-text-field v-model="character.status" label="Status" variant="outlined" density="compact" hide-details placeholder="Silver 3" />
-          </v-col>
-        </v-row>
-
-        <!-- Set 2: Tier 2 Advances (advances2) -->
-        <div class="mb-3">
-          <div class="d-flex justify-space-between align-center mb-1">
-            <span class="text-caption font-weight-bold text-primary">Tier 2 Advances</span>
-            <span class="text-caption text-medium-emphasis">{{ character.advances2.filter(Boolean).length }}/10</span>
-          </div>
-          <div class="d-flex align-center flex-wrap gap-1">
-            <v-tooltip v-for="i in 10" :key="'adv2-' + i" :text="`Tier 2 Advance ${i}`" location="top">
+    <!-- Career & Advances (70% on desktop) -->
+    <div class="careers-col">
+      <SectionCard title="Careers & Advances" full-height add-label="Add Career" @add="addCareer">
+        <div v-for="(c, idx) in character.careers" :key="idx" class="career-row-card mb-3 pa-3 rounded-lg border" :class="{ 'career-active': c.active }">
+          <!-- Career Header info: Active toggle, Class, Career, Status, Delete -->
+          <div class="d-flex flex-wrap align-center gap-2 mb-2">
+            <!-- Active / Important marker -->
+            <v-tooltip :text="c.active ? 'Current Active & Important Career' : 'Click to set as Active Career'" location="top" :open-on-focus="false">
               <template #activator="{ props: tProps }">
-                <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: character.advances2[i - 1] }">
-                  <input
-                    type="checkbox"
-                    :checked="character.advances2[i - 1]"
-                    class="career-checkbox-input"
-                    @change="character.advances2[i - 1] = !character.advances2[i - 1]"
-                  />
-                  <span class="career-checkbox-box">2</span>
-                </label>
-              </template>
-            </v-tooltip>
-          </div>
-        </div>
-
-        <!-- Set 3: Tier 3 Advances (advances3) -->
-        <div class="mb-3">
-          <div class="d-flex justify-space-between align-center mb-1">
-            <span class="text-caption font-weight-bold text-primary">Tier 3 Advances</span>
-            <span class="text-caption text-medium-emphasis">{{ character.advances3.filter(Boolean).length }}/10</span>
-          </div>
-          <div class="d-flex align-center flex-wrap gap-1">
-            <v-tooltip v-for="i in 10" :key="'adv3-' + i" :text="`Tier 3 Advance ${i}`" location="top">
-              <template #activator="{ props: tProps }">
-                <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: character.advances3[i - 1] }">
-                  <input
-                    type="checkbox"
-                    :checked="character.advances3[i - 1]"
-                    class="career-checkbox-input"
-                    @change="character.advances3[i - 1] = !character.advances3[i - 1]"
-                  />
-                  <span class="career-checkbox-box">3</span>
-                </label>
-              </template>
-            </v-tooltip>
-          </div>
-        </div>
-
-        <!-- Set 4: Tier 4 Advances (advances4) -->
-        <div>
-          <div class="d-flex justify-space-between align-center mb-1">
-            <span class="text-caption font-weight-bold text-primary">Tier 4 Advances</span>
-            <span class="text-caption text-medium-emphasis">{{ character.advances4.filter(Boolean).length }}/10</span>
-          </div>
-          <div class="d-flex align-center flex-wrap gap-1">
-            <v-tooltip v-for="i in 10" :key="'adv4-' + i" :text="`Tier 4 Advance ${i}`" location="top">
-              <template #activator="{ props: tProps }">
-                <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: character.advances4[i - 1] }">
-                  <input
-                    type="checkbox"
-                    :checked="character.advances4[i - 1]"
-                    class="career-checkbox-input"
-                    @change="character.advances4[i - 1] = !character.advances4[i - 1]"
-                  />
-                  <span class="career-checkbox-box">4</span>
-                </label>
-              </template>
-            </v-tooltip>
-          </div>
-        </div>
-      </SectionCard>
-    </v-col>
-
-    <!-- Armour Points per Location (3 cols - reduced space) -->
-    <v-col cols="12" md="3">
-      <SectionCard title="Armour Points (AP)" full-height>
-        <!-- Anatomical Compact Body Layout -->
-        <div class="ap-body-container py-1">
-          <!-- 1. Head (Centered) -->
-          <div class="d-flex justify-center mb-2">
-            <v-tooltip text="Head protection (d100 roll 01-09)" location="top">
-              <template #activator="{ props: tProps }">
-                <div v-bind="tProps" class="ap-node">
-                  <span class="ap-name">Head</span>
-                  <span class="ap-roll">01-09</span>
-                  <input
-                    v-model.number="character.armourPoints.head"
-                    type="number"
-                    class="ap-field"
-                    placeholder="0"
-                  />
-                </div>
-              </template>
-            </v-tooltip>
-          </div>
-
-          <!-- 2. Left Arm & Right Arm -->
-          <div class="d-flex justify-space-between align-center mb-2 px-2">
-            <v-tooltip text="Left Arm protection (d100 roll 10-24)" location="top">
-              <template #activator="{ props: tProps }">
-                <div v-bind="tProps" class="ap-node">
-                  <span class="ap-name">L. Arm</span>
-                  <span class="ap-roll">10-24</span>
-                  <input
-                    v-model.number="character.armourPoints.leftArm"
-                    type="number"
-                    class="ap-field"
-                    placeholder="0"
-                  />
-                </div>
+                <button
+                  v-bind="tProps"
+                  type="button"
+                  class="career-active-btn d-flex align-center px-2 py-1 rounded"
+                  :class="{ active: c.active }"
+                  @click="setActiveCareer(idx)"
+                >
+                  <v-icon :icon="c.active ? 'mdi-star' : 'mdi-star-outline'" size="small" class="mr-1" />
+                  <span class="text-caption font-weight-bold">{{ c.active ? 'Active' : 'Inactive' }}</span>
+                </button>
               </template>
             </v-tooltip>
 
-            <v-tooltip text="Right Arm protection (d100 roll 25-44)" location="top">
-              <template #activator="{ props: tProps }">
-                <div v-bind="tProps" class="ap-node">
-                  <span class="ap-name">R. Arm</span>
-                  <span class="ap-roll">25-44</span>
-                  <input
-                    v-model.number="character.armourPoints.rightArm"
-                    type="number"
-                    class="ap-field"
-                    placeholder="0"
-                  />
-                </div>
-              </template>
-            </v-tooltip>
+            <div class="flex-grow-1" style="min-width: 140px;">
+              <v-text-field
+                v-model="c.class"
+                label="Class"
+                variant="outlined"
+                density="compact"
+                hide-details
+                placeholder="Academic..."
+                @update:model-value="c.active && syncActiveCareer(c)"
+              />
+            </div>
+            <div class="flex-grow-1" style="min-width: 160px;">
+              <v-text-field
+                v-model="c.career"
+                label="Career"
+                variant="outlined"
+                density="compact"
+                hide-details
+                placeholder="Wizard..."
+                @update:model-value="c.active && syncActiveCareer(c)"
+              />
+            </div>
+            <div style="width: 110px;">
+              <v-text-field
+                v-model="c.status"
+                label="Status"
+                variant="outlined"
+                density="compact"
+                hide-details
+                placeholder="Silver 3"
+                @update:model-value="c.active && syncActiveCareer(c)"
+              />
+            </div>
+
+            <DeleteRowBtn v-if="character.careers.length > 1" @delete="removeCareer(idx)" />
           </div>
 
-          <!-- 3. Body (Centered) -->
-          <div class="d-flex justify-center mb-2">
-            <v-tooltip text="Body Torso protection (d100 roll 45-79)" location="top">
-              <template #activator="{ props: tProps }">
-                <div v-bind="tProps" class="ap-node">
-                  <span class="ap-name">Body</span>
-                  <span class="ap-roll">45-79</span>
-                  <input
-                    v-model.number="character.armourPoints.body"
-                    type="number"
-                    class="ap-field"
-                    placeholder="0"
-                  />
-                </div>
-              </template>
-            </v-tooltip>
-          </div>
+          <!-- Tier Advances (Rank 2: 10 boxes in 2 rows of 5, Rank 3: 12 boxes in 2 rows of 6, Rank 4: 14 boxes in 2 rows of 7) -->
+          <v-row dense class="pt-2 border-t">
+            <!-- Tier 2 (10 boxes: 2 rows of 5) -->
+            <v-col cols="12" md="4" class="tier-col">
+              <div class="d-flex justify-space-between align-center mb-1">
+                <span class="text-caption font-weight-bold text-primary">Tier 2 Advances</span>
+                <span class="text-caption text-medium-emphasis">{{ c.advances2.filter(Boolean).length }}/10</span>
+              </div>
+              <div class="tier-boxes-grid grid-5">
+                <v-tooltip v-for="i in 10" :key="'adv2-' + i" :text="`Tier 2 Advance ${i}`" location="top" :open-on-focus="false">
+                  <template #activator="{ props: tProps }">
+                    <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: c.advances2[i - 1] }">
+                      <input
+                        type="checkbox"
+                        :checked="c.advances2[i - 1]"
+                        class="career-checkbox-input"
+                        @change="c.advances2[i - 1] = !c.advances2[i - 1]"
+                      />
+                      <span class="career-checkbox-box"></span>
+                    </label>
+                  </template>
+                </v-tooltip>
+              </div>
+            </v-col>
 
-          <!-- 4. Left Leg & Right Leg -->
-          <div class="d-flex justify-space-between align-center mb-2 px-2">
-            <v-tooltip text="Left Leg protection (d100 roll 80-89)" location="top">
-              <template #activator="{ props: tProps }">
-                <div v-bind="tProps" class="ap-node">
-                  <span class="ap-name">L. Leg</span>
-                  <span class="ap-roll">80-89</span>
-                  <input
-                    v-model.number="character.armourPoints.leftLeg"
-                    type="number"
-                    class="ap-field"
-                    placeholder="0"
-                  />
-                </div>
-              </template>
-            </v-tooltip>
+            <!-- Tier 3 (12 boxes: 2 rows of 6) -->
+            <v-col cols="12" md="4" class="tier-col">
+              <div class="d-flex justify-space-between align-center mb-1">
+                <span class="text-caption font-weight-bold text-primary">Tier 3 Advances</span>
+                <span class="text-caption text-medium-emphasis">{{ c.advances3.filter(Boolean).length }}/12</span>
+              </div>
+              <div class="tier-boxes-grid grid-6">
+                <v-tooltip v-for="i in 12" :key="'adv3-' + i" :text="`Tier 3 Advance ${i}`" location="top" :open-on-focus="false">
+                  <template #activator="{ props: tProps }">
+                    <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: c.advances3[i - 1] }">
+                      <input
+                        type="checkbox"
+                        :checked="c.advances3[i - 1]"
+                        class="career-checkbox-input"
+                        @change="c.advances3[i - 1] = !c.advances3[i - 1]"
+                      />
+                      <span class="career-checkbox-box"></span>
+                    </label>
+                  </template>
+                </v-tooltip>
+              </div>
+            </v-col>
 
-            <v-tooltip text="Right Leg protection (d100 roll 90-00)" location="top">
-              <template #activator="{ props: tProps }">
-                <div v-bind="tProps" class="ap-node">
-                  <span class="ap-name">R. Leg</span>
-                  <span class="ap-roll">90-00</span>
-                  <input
-                    v-model.number="character.armourPoints.rightLeg"
-                    type="number"
-                    class="ap-field"
-                    placeholder="0"
-                  />
-                </div>
-              </template>
-            </v-tooltip>
-          </div>
-
-          <!-- 5. Shield (Centered) -->
-          <div class="d-flex justify-center">
-            <v-tooltip text="Shield AP Bonus" location="top">
-              <template #activator="{ props: tProps }">
-                <div v-bind="tProps" class="ap-node">
-                  <span class="ap-name">Shield</span>
-                  <span class="ap-roll">Bonus</span>
-                  <input
-                    v-model.number="character.armourPoints.shield"
-                    type="number"
-                    class="ap-field"
-                    placeholder="0"
-                  />
-                </div>
-              </template>
-            </v-tooltip>
-          </div>
+            <!-- Tier 4 (14 boxes: 2 rows of 7) -->
+            <v-col cols="12" md="4" class="tier-col">
+              <div class="d-flex justify-space-between align-center mb-1">
+                <span class="text-caption font-weight-bold text-primary">Tier 4 Advances</span>
+                <span class="text-caption text-medium-emphasis">{{ c.advances4.filter(Boolean).length }}/14</span>
+              </div>
+              <div class="tier-boxes-grid grid-7">
+                <v-tooltip v-for="i in 14" :key="'adv4-' + i" :text="`Tier 4 Advance ${i}`" location="top" :open-on-focus="false">
+                  <template #activator="{ props: tProps }">
+                    <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: c.advances4[i - 1] }">
+                      <input
+                        type="checkbox"
+                        :checked="c.advances4[i - 1]"
+                        class="career-checkbox-input"
+                        @change="c.advances4[i - 1] = !c.advances4[i - 1]"
+                      />
+                      <span class="career-checkbox-box"></span>
+                    </label>
+                  </template>
+                </v-tooltip>
+              </div>
+            </v-col>
+          </v-row>
         </div>
       </SectionCard>
-    </v-col>
-  </v-row>
+    </div>
+  </div>
 </template>
 
 <style scoped>
 .gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+
+.vitals-careers-row {
+  display: flex;
+}
+
+.vitals-col {
+  flex: 0 0 calc(30% - 6px);
+  max-width: calc(30% - 6px);
+}
+
+.careers-col {
+  flex: 0 0 calc(70% - 6px);
+  max-width: calc(70% - 6px);
+}
+
+@media (max-width: 960px) {
+  .vitals-col, .careers-col {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
 
 .border-t {
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
+.career-row-card {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  transition: all 0.2s ease;
+}
+
+.career-row-card.career-active {
+  border-color: rgb(var(--v-theme-primary)) !important;
+  box-shadow: 0 0 8px rgba(var(--v-theme-primary), 0.2);
+  background: rgba(var(--v-theme-primary), 0.05);
+}
+
+.career-active-btn {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-surface), 0.8);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.career-active-btn.active {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+
+.tier-boxes-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.grid-6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.grid-7 {
+  grid-template-columns: repeat(7, 1fr);
+}
+
 .career-checkbox-label {
   cursor: pointer;
   user-select: none;
+  display: flex;
+  justify-content: center;
 }
 
 .career-checkbox-input {
@@ -311,65 +391,20 @@ defineProps<{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  background: rgba(var(--v-theme-surface-variant), 0.4);
+  background: rgba(var(--v-theme-surface), 0.7);
   transition: all 0.15s ease;
 }
 
 .career-checkbox-label.checked .career-checkbox-box {
   background: rgb(var(--v-theme-primary));
-  color: rgb(var(--v-theme-on-primary));
   border-color: rgb(var(--v-theme-primary));
 }
 
 .career-checkbox-label:hover .career-checkbox-box {
   border-color: rgb(var(--v-theme-primary));
-}
-
-.ap-node {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  user-select: none;
-}
-
-.ap-name {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: rgb(var(--v-theme-primary));
-  line-height: 1.1;
-}
-
-.ap-roll {
-  font-size: 0.65rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  line-height: 1;
-  margin-bottom: 2px;
-}
-
-.ap-field {
-  width: 44px;
-  height: 32px;
-  text-align: center;
-  font-size: 1.1rem;
-  font-weight: 800;
-  border: 1.5px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 6px;
-  background: rgba(var(--v-theme-surface-variant), 0.4);
-  color: currentColor;
-  outline: none;
-  transition: all 0.15s ease;
-}
-
-.ap-field:focus {
-  border-color: rgb(var(--v-theme-primary));
-  background: rgb(var(--v-theme-surface));
-  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.25);
 }
 </style>

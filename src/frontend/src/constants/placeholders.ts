@@ -11,11 +11,13 @@ export interface Skill {
   name: string
   characteristic: string
   adv: number
+  important?: boolean
 }
 
 export interface Talent {
   name: string
   desc: string
+  important?: boolean
 }
 
 export interface Weapon {
@@ -25,6 +27,7 @@ export interface Weapon {
   rangeReach: string
   damage: string
   qualities: string
+  worn?: boolean
 }
 
 export interface ArmourItem {
@@ -33,14 +36,20 @@ export interface ArmourItem {
   enc: number
   ap: number
   qualities: string
+  worn?: boolean
 }
 
 export interface TrappingItem {
+  id?: string
   name: string
   category: string
   enc: number
   qty: number
   desc: string
+  worn?: boolean
+  isBag?: boolean
+  bagSize?: number
+  containedTrappings?: TrappingItem[]
 }
 
 export interface Spell {
@@ -57,12 +66,45 @@ export interface Mutation {
   effect: string
 }
 
+export interface CareerEntry {
+  class: string
+  career: string
+  status: string
+  active: boolean
+  advances2: boolean[] // 10 boxes
+  advances3: boolean[] // 12 boxes
+  advances4: boolean[] // 14 boxes
+}
+
+export interface MountAttack {
+  name: string
+  skillToRoll: string
+  displayValue: number
+  damage: string
+  qualities: string
+}
+
+export interface MountTrait {
+  name: string
+  desc: string
+}
+
+export interface MountData {
+  name: string
+  characteristics: Record<string, Characteristic | null>
+  attacks: MountAttack[]
+  skills: Skill[]
+  traits: MountTrait[]
+  trappings: TrappingItem[]
+}
+
 export interface CharacterModel {
   name: string
   species: string
   appearance: string
   class: string
   career: string
+  careers: CareerEntry[]
   advances2: boolean[]
   advances3: boolean[]
   advances4: boolean[]
@@ -70,7 +112,9 @@ export interface CharacterModel {
   movement: number
   xp: { current: number; spent: number }
   fate: number
+  fateMax: number
   fortune: number
+  fortuneMax: number
   personalAmbition: string
   partyAmbition: string
   characteristics: Record<string, Characteristic>
@@ -93,6 +137,10 @@ export interface CharacterModel {
   armour: ArmourItem[]
   trappings: TrappingItem[]
   spells: Spell[]
+  mount?: MountData
+  spellsHidden: boolean
+  mountHidden: boolean
+  importantCharacteristics: string[]
   notes: string
 }
 
@@ -102,16 +150,29 @@ export const DEFAULT_CHARACTER: CharacterModel = {
   appearance: '',
   class: '',
   career: '',
+  careers: [
+    {
+      class: '',
+      career: '',
+      status: '',
+      active: true,
+      advances2: Array(10).fill(false),
+      advances3: Array(12).fill(false),
+      advances4: Array(14).fill(false),
+    },
+  ],
   advances2: Array(10).fill(false),
-  advances3: Array(10).fill(false),
-  advances4: Array(10).fill(false),
+  advances3: Array(12).fill(false),
+  advances4: Array(14).fill(false),
   status: '',
   movement: 4,
 
   xp: { current: 0, spent: 0 },
 
   fate: 0,
+  fateMax: 0,
   fortune: 0,
+  fortuneMax: 0,
 
   personalAmbition: '',
   partyAmbition: '',
@@ -152,6 +213,28 @@ export const DEFAULT_CHARACTER: CharacterModel = {
   armour: [],
   trappings: [],
   spells: [],
+  mount: {
+    name: '',
+    characteristics: {
+      WS: { name: 'Weapon Skill', initial: 30, advances: 0, hint: '' },
+      BS: null,
+      S: { name: 'Strength', initial: 45, advances: 0, hint: '' },
+      T: { name: 'Toughness', initial: 45, advances: 0, hint: '' },
+      I: { name: 'Initiative', initial: 30, advances: 0, hint: '' },
+      Ag: { name: 'Agility', initial: 30, advances: 0, hint: '' },
+      Dex: null,
+      Int: { name: 'Intelligence', initial: 10, advances: 0, hint: '' },
+      WP: { name: 'Willpower', initial: 30, advances: 0, hint: '' },
+      Fel: { name: 'Fellowship', initial: 20, advances: 0, hint: '' },
+    },
+    attacks: [],
+    skills: [],
+    traits: [],
+    trappings: [],
+  },
+  spellsHidden: false,
+  mountHidden: true,
+  importantCharacteristics: [],
 
   notes: '',
 }
@@ -189,14 +272,48 @@ export const DEFAULT_ADVANCED_SKILLS: Skill[] = []
 export const DEFAULT_LANGUAGES: Skill[] = []
 
 export const NEW_ITEM_TEMPLATES = {
-  advancedSkill: (): Skill => ({ name: '', characteristic: 'Int', adv: 0 }),
-  talent: (): Talent => ({ name: '', desc: '' }),
-  language: (): Skill => ({ name: '', characteristic: 'Int', adv: 0 }),
-  weapon: (): Weapon => ({ name: '', group: '', enc: 0, rangeReach: '', damage: '', qualities: '' }),
-  armour: (): ArmourItem => ({ name: '', locations: '', enc: 0, ap: 0, qualities: '' }),
-  trapping: (): TrappingItem => ({ name: '', category: '', enc: 0, qty: 1, desc: '' }),
+  career: (): CareerEntry => ({
+    class: '',
+    career: '',
+    status: '',
+    active: false,
+    advances2: Array(10).fill(false),
+    advances3: Array(12).fill(false),
+    advances4: Array(14).fill(false),
+  }),
+  advancedSkill: (): Skill => ({ name: '', characteristic: 'Int', adv: 0, important: false }),
+  talent: (): Talent => ({ name: '', desc: '', important: false }),
+  language: (): Skill => ({ name: '', characteristic: 'Int', adv: 0, important: false }),
+  weapon: (): Weapon => ({ name: '', group: '', enc: 0, rangeReach: '', damage: '', qualities: '', worn: false }),
+  armour: (): ArmourItem => ({ name: '', locations: '', enc: 0, ap: 0, qualities: '', worn: false }),
+  trapping: (): TrappingItem => ({
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    name: '',
+    category: '',
+    enc: 0,
+    qty: 1,
+    desc: '',
+    worn: false,
+    isBag: false,
+    bagSize: 0,
+    containedTrappings: [],
+  }),
+  bag: (): TrappingItem => ({
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `bag-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    name: '',
+    category: 'Containers',
+    enc: 1,
+    qty: 1,
+    desc: '',
+    worn: false,
+    isBag: true,
+    bagSize: 5,
+    containedTrappings: [],
+  }),
   spell: (): Spell => ({ name: '', cn: 0, range: '', target: '', duration: '', description: '' }),
   mutation: (): Mutation => ({ name: '', effect: '' }),
+  mountAttack: (): MountAttack => ({ name: '', skillToRoll: 'WS', displayValue: 0, damage: '', qualities: '' }),
+  mountTrait: (): MountTrait => ({ name: '', desc: '' }),
 }
 
 // Rich Mock Data Set for Demonstration & Testing
@@ -206,16 +323,29 @@ export const MOCK_CHARACTER: CharacterModel = {
   appearance: 'Tall, analytical eyes, crimson scholar robes',
   class: 'Academic',
   career: 'Wizard',
+  careers: [
+    {
+      class: 'Academic',
+      career: 'Wizard',
+      status: 'Silver 3',
+      active: true,
+      advances2: [true, true, true, true, false, false, false, false, false, false],
+      advances3: [false, false, false, false, false, false, false, false, false, false, false, false],
+      advances4: [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+    },
+  ],
   advances2: [true, true, true, true, false, false, false, false, false, false],
-  advances3: [false, false, false, false, false, false, false, false, false, false],
-  advances4: [false, false, false, false, false, false, false, false, false, false],
+  advances3: [false, false, false, false, false, false, false, false, false, false, false, false],
+  advances4: [false, false, false, false, false, false, false, false, false, false, false, false, false, false],
   status: 'Silver 3',
   movement: 4,
 
   xp: { current: 150, spent: 1200 },
 
   fate: 3,
+  fateMax: 3,
   fortune: 2,
+  fortuneMax: 3,
 
   personalAmbition: 'Acquire an authentic Grimoire of Aqshy from Nuln',
   partyAmbition: 'Cleanse the sewers under Altdorf of mutant corruption',
@@ -282,6 +412,43 @@ export const MOCK_CHARACTER: CharacterModel = {
     { name: 'Cauterize', cn: 2, range: 'Touch', target: '1 Ally', duration: 'Instant', description: 'Stops bleeding immediately and restores 2 Wounds.' },
     { name: 'Crown of Flame', cn: 6, range: 'You', target: 'Self', duration: '10 Rounds', description: 'Surrounds caster in radiant fire (+2 AP, +10 Fear tests).' },
   ],
+
+  mount: {
+    name: 'Altdorf Courser',
+    characteristics: {
+      WS: { name: 'Weapon Skill', initial: 30, advances: 0, hint: '' },
+      BS: null,
+      S: { name: 'Strength', initial: 45, advances: 0, hint: '' },
+      T: { name: 'Toughness', initial: 45, advances: 0, hint: '' },
+      I: { name: 'Initiative', initial: 30, advances: 0, hint: '' },
+      Ag: { name: 'Agility', initial: 32, advances: 0, hint: '' },
+      Dex: null,
+      Int: { name: 'Intelligence', initial: 10, advances: 0, hint: '' },
+      WP: { name: 'Willpower', initial: 30, advances: 0, hint: '' },
+      Fel: { name: 'Fellowship', initial: 20, advances: 0, hint: '' },
+    },
+    attacks: [
+      { name: 'Bite', skillToRoll: 'WS', displayValue: 30, damage: '+SB+2', qualities: '' },
+      { name: 'Kick', skillToRoll: 'WS', displayValue: 30, damage: '+SB+4', qualities: '' },
+    ],
+    skills: [
+      { name: 'Athletics', characteristic: 'Ag', adv: 10 },
+      { name: 'Endurance', characteristic: 'T', adv: 15 },
+    ],
+    traits: [
+      { name: 'Size (Large)', desc: 'Larger than humanoid' },
+      { name: 'Trained (Mount)', desc: 'Trained to carry a rider in travel and skirmish' },
+    ],
+    trappings: [
+      { id: 'mount-saddle', name: 'Riding Saddle & Bridle', category: 'Gear', enc: 2, qty: 1, desc: 'Quality leather harness' },
+      { id: 'mount-saddlebags', name: 'Saddlebags', category: 'Containers', enc: 1, qty: 1, desc: 'Large leather pouches', isBag: true, bagSize: 8, containedTrappings: [
+        { id: 'mount-feed', name: 'Oats & Grain (1 week)', category: 'Food', enc: 2, qty: 1, desc: 'Dry fodder' },
+      ] },
+    ],
+  },
+  spellsHidden: false,
+  mountHidden: true,
+  importantCharacteristics: ['WP', 'Int'],
 
   notes: 'Trained at the Colleges of Magic in Altdorf under Master Thaddeus. Seeking rare alchemical reagents in the Reikland to advance to Master Wizard.',
 }

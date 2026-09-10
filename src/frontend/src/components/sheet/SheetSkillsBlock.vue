@@ -35,8 +35,24 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="skill in basicSkills" :key="skill.name">
-              <td class="font-weight-medium text-high-emphasis">{{ skill.name }}</td>
+            <tr v-for="skill in basicSkills" :key="skill.name" :class="{ 'skill-important-row': skill.important }">
+              <td>
+                <div class="d-flex align-center justify-space-between position-relative skill-name-cell">
+                  <span class="font-weight-medium text-high-emphasis text-wrap mr-1">{{ skill.name }}</span>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    density="compact"
+                    class="skill-important-btn"
+                    :class="{ 'btn-active': skill.important }"
+                    :title="skill.important ? 'Marked as important' : 'Mark as important'"
+                    @click="skill.important = !skill.important"
+                  >
+                    <v-icon size="14">{{ skill.important ? 'mdi-alert-circle' : 'mdi-alert-circle-outline' }}</v-icon>
+                  </v-btn>
+                </div>
+              </td>
               <td class="text-center text-primary font-weight-bold">{{ skill.characteristic }}</td>
               <td class="text-center">
                 <input v-model.number="skill.adv" type="number" class="skill-num-input font-weight-medium" placeholder="0" />
@@ -70,9 +86,23 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(skill, index) in advancedSkills" :key="index">
+            <tr v-for="(skill, index) in advancedSkills" :key="index" :class="{ 'skill-important-row': skill.important }">
               <td>
-                <input v-model="skill.name" type="text" class="skill-text-input font-weight-medium" placeholder="Skill Name" />
+                <div class="d-flex align-center justify-space-between position-relative skill-name-cell">
+                  <input v-model="skill.name" type="text" class="skill-text-input font-weight-medium" placeholder="Skill Name" />
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    density="compact"
+                    class="skill-important-btn ml-1"
+                    :class="{ 'btn-active': skill.important }"
+                    :title="skill.important ? 'Marked as important' : 'Mark as important'"
+                    @click="skill.important = !skill.important"
+                  >
+                    <v-icon size="14">{{ skill.important ? 'mdi-alert-circle' : 'mdi-alert-circle-outline' }}</v-icon>
+                  </v-btn>
+                </div>
               </td>
               <td class="text-center">
                 <input v-model="skill.characteristic" type="text" class="skill-char-input font-weight-bold text-primary text-uppercase" placeholder="Int" />
@@ -156,5 +186,25 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
 .skill-table :deep(td) {
   padding: 4px 8px !important;
   height: auto !important;
+  white-space: normal;
+}
+
+.skill-important-row {
+  background-color: rgba(var(--v-theme-primary), 0.12) !important;
+}
+
+.skill-name-cell .skill-important-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.skill-name-cell:hover .skill-important-btn,
+.skill-important-btn.btn-active {
+  opacity: 1;
+}
+
+.skill-important-btn.btn-active {
+  color: rgb(var(--v-theme-primary)) !important;
 }
 </style>

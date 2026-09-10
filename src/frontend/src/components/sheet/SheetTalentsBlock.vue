@@ -36,9 +36,35 @@ const getLanguageTotal = (lang: Skill) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(talent, idx) in talents" :key="idx">
-              <td style="width: 200px; max-width: 200px;"><v-text-field v-model="talent.name" variant="plain" density="compact" hide-details placeholder="Talent Name" /></td>
-              <td><v-text-field v-model="talent.desc" variant="plain" density="compact" hide-details placeholder="Effect description" /></td>
+            <tr v-for="(talent, idx) in talents" :key="idx" :class="{ 'talent-important-row': talent.important }">
+              <td style="width: 200px; max-width: 200px;">
+                <div class="d-flex align-center justify-space-between talent-name-cell">
+                  <v-text-field v-model="talent.name" variant="plain" density="compact" hide-details placeholder="Talent Name" />
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    density="compact"
+                    class="talent-important-btn ml-1"
+                    :class="{ 'btn-active': talent.important }"
+                    :title="talent.important ? 'Marked as important' : 'Mark as important'"
+                    @click="talent.important = !talent.important"
+                  >
+                    <v-icon size="14">{{ talent.important ? 'mdi-alert-circle' : 'mdi-alert-circle-outline' }}</v-icon>
+                  </v-btn>
+                </div>
+              </td>
+              <td>
+                <v-textarea
+                  v-model="talent.desc"
+                  variant="plain"
+                  density="compact"
+                  rows="1"
+                  auto-grow
+                  hide-details
+                  placeholder="Effect description"
+                />
+              </td>
               <td class="text-right"><DeleteRowBtn @delete="emit('removeTalent', idx)" /></td>
             </tr>
           </tbody>
@@ -59,8 +85,24 @@ const getLanguageTotal = (lang: Skill) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(lang, idx) in languages" :key="idx">
-              <td><v-text-field v-model="lang.name" variant="plain" density="compact" hide-details placeholder="Language Name" /></td>
+            <tr v-for="(lang, idx) in languages" :key="idx" :class="{ 'talent-important-row': lang.important }">
+              <td>
+                <div class="d-flex align-center justify-space-between talent-name-cell">
+                  <v-text-field v-model="lang.name" variant="plain" density="compact" hide-details placeholder="Language Name" />
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    density="compact"
+                    class="talent-important-btn ml-1"
+                    :class="{ 'btn-active': lang.important }"
+                    :title="lang.important ? 'Marked as important' : 'Mark as important'"
+                    @click="lang.important = !lang.important"
+                  >
+                    <v-icon size="14">{{ lang.important ? 'mdi-alert-circle' : 'mdi-alert-circle-outline' }}</v-icon>
+                  </v-btn>
+                </div>
+              </td>
               <td style="max-width: 60px;"><v-text-field v-model.number="lang.adv" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" /></td>
               <td class="text-right font-weight-black">
                 <v-tooltip text="Language Total = Int + Advances" location="right">
@@ -79,3 +121,28 @@ const getLanguageTotal = (lang: Skill) => {
     </v-col>
   </v-row>
 </template>
+
+<style scoped>
+:deep(td) {
+  white-space: normal;
+}
+
+.talent-important-row {
+  background-color: rgba(var(--v-theme-primary), 0.12) !important;
+}
+
+.talent-name-cell .talent-important-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.talent-name-cell:hover .talent-important-btn,
+.talent-important-btn.btn-active {
+  opacity: 1;
+}
+
+.talent-important-btn.btn-active {
+  color: rgb(var(--v-theme-primary)) !important;
+}
+</style>

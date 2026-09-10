@@ -7,7 +7,8 @@ import {
   DEFAULT_LANGUAGES,
   NEW_ITEM_TEMPLATES,
   type CharacterModel,
-  type Skill
+  type Skill,
+  type MountData
 } from '../constants/placeholders'
 import { characterApi } from '../services/characterApi'
 
@@ -20,6 +21,11 @@ import SheetWeaponsBlock from '../components/sheet/SheetWeaponsBlock.vue'
 import SheetArmourTrappingsBlock from '../components/sheet/SheetArmourTrappingsBlock.vue'
 import SheetSpellsMutationsBlock from '../components/sheet/SheetSpellsMutationsBlock.vue'
 import SheetAmbitionsNotesBlock from '../components/sheet/SheetAmbitionsNotesBlock.vue'
+import SheetMountBlock from '../components/sheet/SheetMountBlock.vue'
+
+const emit = defineEmits<{
+  (e: 'openMenu'): void
+}>()
 
 // WFRP 5e Character Sheet Reactive Model
 const character = ref<CharacterModel>(JSON.parse(JSON.stringify(DEFAULT_CHARACTER)))
@@ -35,6 +41,27 @@ const saveSnackbar = ref(false)
 const snackbarMessage = ref('')
 const currentSheetUuid = ref<string | undefined>(undefined)
 
+// Snapshot for dirty tracking
+const savedSnapshot = ref<string>('')
+
+function createSnapshot(): string {
+  return JSON.stringify({
+    character: character.value,
+    basicSkills: basicSkills.value,
+    advancedSkills: advancedSkills.value,
+    languages: languages.value,
+  })
+}
+
+function updateSavedSnapshot() {
+  savedSnapshot.value = createSnapshot()
+}
+
+const isDirty = computed(() => {
+  if (!savedSnapshot.value) return false
+  return createSnapshot() !== savedSnapshot.value
+})
+
 onMounted(async () => {
   // Restore guest character sheet from browser localStorage if unauthenticated
   if (!characterApi.isAuthenticated()) {
@@ -48,6 +75,7 @@ onMounted(async () => {
   } else {
     await loadUserCharacter()
   }
+  updateSavedSnapshot()
 })
 
 // Formulas
@@ -73,17 +101,92 @@ const computedMaxWounds = computed(() => {
   return sb + (tb * 2) + wpb + hardy
 })
 
-const computedWalk = computed(() => (Number(character.value.movement) || 0) * 2)
-const computedRun = computed(() => (Number(character.value.movement) || 0) * 4)
-
 const computedMaxEnc = computed(() => getCharBonus('S') + getCharBonus('T'))
 
+const encBreakdown = computed(() => {
+  let weapons = 0
+  character.value.weapons.forEach((w) => {
+    const raw = Number(w.enc) || 0
+    weapons += w.worn ? Math.max(0, raw - 1) : raw
+  })
+
+  let armour = 0
+  character.value.armour.forEach((a) => {
+    const raw = Number(a.enc) || 0
+    armour += a.worn ? Math.max(0, raw - 1) : raw
+  })
+
+  let trappings = 0
+  character.value.trappings.forEach((t) => {
+    const raw = Number(t.enc) || 0
+    const qty = Number(t.qty) || 1
+    const perItem = t.worn ? Math.max(0, raw - 1) : raw
+    trappings += perItem * qty
+  })
+
+  const totalCoins =
+    (Number(character.value.wealth.gc) || 0) +
+    (Number(character.value.wealth.ss) || 0) +
+    (Number(character.value.wealth.bp) || 0)
+  const coins = Math.floor(totalCoins / 200)
+
+  return {
+    weapons,
+    armour,
+    trappings,
+    coins,
+    totalCoins,
+  }
+})
+
 const computedTotalEnc = computed(() => {
-  let total = 0
-  character.value.weapons.forEach(w => total += Number(w.enc) || 0)
-  character.value.armour.forEach(a => total += Number(a.enc) || 0)
-  character.value.trappings.forEach(t => total += (Number(t.enc) || 0) * (Number(t.qty) || 1))
-  return total
+  const b = encBreakdown.value
+  return b.weapons + b.armour + b.trappings + b.coins
+})
+
+// Over-encumbrance penalties (visual only, not persisted)
+const movementPenalty = computed(() => {
+  const tot = computedTotalEnc.value
+  const max = computedMaxEnc.value
+  if (tot <= max) return 0
+  const baseMove = Number(character.value.movement) || 0
+  if (tot > 3 * max) return baseMove
+  if (tot > 2 * max) {
+    const penalized = Math.max(2, baseMove - 2)
+    return Math.max(0, baseMove - penalized)
+  }
+  const penalized = Math.max(3, baseMove - 1)
+  return Math.max(0, baseMove - penalized)
+})
+
+const effectiveMovement = computed(() => {
+  const base = Number(character.value.movement) || 0
+  return Math.max(0, base - movementPenalty.value)
+})
+
+const computedWalk = computed(() => effectiveMovement.value * 2)
+const computedRun = computed(() => effectiveMovement.value * 4)
+
+const agilityPenalty = computed(() => {
+  const tot = computedTotalEnc.value
+  const max = computedMaxEnc.value
+  if (tot <= max) return 0
+  const baseAg = getCharCurrent('Ag')
+  if (tot > 3 * max) return baseAg
+  if (tot > 2 * max) {
+    const penalized = Math.max(10, baseAg - 20)
+    return Math.max(0, baseAg - penalized)
+  }
+  return Math.min(10, baseAg)
+})
+
+const travelFatigue = computed(() => {
+  const tot = computedTotalEnc.value
+  const max = computedMaxEnc.value
+  if (tot <= max) return 0
+  if (tot > 3 * max) return 3
+  if (tot > 2 * max) return 2
+  return 1
 })
 
 // API / Mock Actions
@@ -107,6 +210,7 @@ async function saveSheet() {
       snackbarMessage.value = 'Character sheet saved to browser storage!'
     }
     saveSnackbar.value = true
+    updateSavedSnapshot()
   } catch {
     snackbarMessage.value = 'Error saving sheet'
     saveSnackbar.value = true
@@ -124,6 +228,7 @@ function loadMockData() {
   currentSheetUuid.value = 'mock-gottfried'
   snackbarMessage.value = 'Loaded demo character (Gottfried von Altdorf)!'
   saveSnackbar.value = true
+  updateSavedSnapshot()
 }
 
 function newBlankSheet() {
@@ -138,6 +243,7 @@ function newBlankSheet() {
   }
   snackbarMessage.value = 'New blank character sheet ready.'
   saveSnackbar.value = true
+  updateSavedSnapshot()
 }
 
 async function loadUserCharacter() {
@@ -163,6 +269,7 @@ async function loadCharacterSheet(uuid: string) {
     currentSheetUuid.value = (uuid !== 'guest' && uuid !== 'mock' && uuid !== 'demo' && uuid !== 'mock-gottfried') ? uuid : undefined
     snackbarMessage.value = `Loaded ${data.character.name || 'character sheet'}!`
     saveSnackbar.value = true
+    updateSavedSnapshot()
   } catch {
     snackbarMessage.value = 'Failed to load character sheet'
     saveSnackbar.value = true
@@ -211,6 +318,8 @@ async function importJson(file: File) {
       throw new Error('Invalid JSON character sheet format')
     }
 
+    const defaultMount = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.mount))
+
     character.value = {
       ...blank.character,
       ...rawChar,
@@ -221,15 +330,30 @@ async function importJson(file: File) {
       wounds: { ...blank.character.wounds, ...(rawChar.wounds || {}) },
       armourPoints: { ...blank.character.armourPoints, ...(rawChar.armourPoints || {}) },
       wealth: { ...blank.character.wealth, ...(rawChar.wealth || {}) },
+      careers: Array.isArray(rawChar.careers)
+        ? rawChar.careers
+        : (rawChar.career ? [{
+            class: rawChar.class || '',
+            career: rawChar.career,
+            status: rawChar.status || '',
+            active: true,
+            advances2: Array(10).fill(false),
+            advances3: Array(12).fill(false),
+            advances4: Array(14).fill(false),
+          }] : []),
       talents: Array.isArray(rawChar.talents) ? rawChar.talents : [],
       weapons: Array.isArray(rawChar.weapons) ? rawChar.weapons : [],
       armour: Array.isArray(rawChar.armour) ? rawChar.armour : [],
       trappings: Array.isArray(rawChar.trappings) ? rawChar.trappings : [],
       spells: Array.isArray(rawChar.spells) ? rawChar.spells : [],
       mutations: Array.isArray(rawChar.mutations) ? rawChar.mutations : [],
+      mount: rawChar.mount || defaultMount,
+      spellsHidden: Boolean(rawChar.spellsHidden),
+      mountHidden: rawChar.mountHidden !== undefined ? Boolean(rawChar.mountHidden) : true,
+      importantCharacteristics: Array.isArray(rawChar.importantCharacteristics) ? rawChar.importantCharacteristics : [],
       advances2: Array.isArray(rawChar.advances2) && rawChar.advances2.length === 10 ? rawChar.advances2 : Array(10).fill(false),
-      advances3: Array.isArray(rawChar.advances3) && rawChar.advances3.length === 10 ? rawChar.advances3 : Array(10).fill(false),
-      advances4: Array.isArray(rawChar.advances4) && rawChar.advances4.length === 10 ? rawChar.advances4 : Array(10).fill(false),
+      advances3: Array.isArray(rawChar.advances3) && rawChar.advances3.length === 12 ? rawChar.advances3 : Array(12).fill(false),
+      advances4: Array.isArray(rawChar.advances4) && rawChar.advances4.length === 14 ? rawChar.advances4 : Array(14).fill(false),
     }
 
     basicSkills.value = Array.isArray(parsed.basicSkills) ? parsed.basicSkills : blank.basicSkills
@@ -239,6 +363,7 @@ async function importJson(file: File) {
     currentSheetUuid.value = undefined
     snackbarMessage.value = `Imported character: "${character.value.name || 'Unnamed'}"`
     saveSnackbar.value = true
+    updateSavedSnapshot()
   } catch (err: any) {
     console.error('Import error:', err)
     snackbarMessage.value = `Failed to import JSON: ${err?.message || 'Invalid file format'}`
@@ -291,6 +416,10 @@ function addTrapping() {
   character.value.trappings.push(NEW_ITEM_TEMPLATES.trapping())
 }
 
+function addBag() {
+  character.value.trappings.push(NEW_ITEM_TEMPLATES.bag())
+}
+
 function removeTrapping(index: number) {
   character.value.trappings.splice(index, 1)
 }
@@ -311,6 +440,58 @@ function removeMutation(index: number) {
   character.value.mutations.splice(index, 1)
 }
 
+// Mount Row Handlers
+function getMount(): MountData {
+  if (!character.value.mount) {
+    character.value.mount = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.mount))
+  }
+  return character.value.mount!
+}
+
+function addMountAttack() {
+  const m = getMount()
+  if (!m.attacks) m.attacks = []
+  m.attacks.push(NEW_ITEM_TEMPLATES.mountAttack())
+}
+
+function removeMountAttack(index: number) {
+  const m = getMount()
+  m.attacks?.splice(index, 1)
+}
+
+function addMountSkill() {
+  const m = getMount()
+  if (!m.skills) m.skills = []
+  m.skills.push(NEW_ITEM_TEMPLATES.advancedSkill())
+}
+
+function removeMountSkill(index: number) {
+  const m = getMount()
+  m.skills?.splice(index, 1)
+}
+
+function addMountTrait() {
+  const m = getMount()
+  if (!m.traits) m.traits = []
+  m.traits.push(NEW_ITEM_TEMPLATES.mountTrait())
+}
+
+function removeMountTrait(index: number) {
+  const m = getMount()
+  m.traits?.splice(index, 1)
+}
+
+function addMountTrapping() {
+  const m = getMount()
+  if (!m.trappings) m.trappings = []
+  m.trappings.push(NEW_ITEM_TEMPLATES.trapping())
+}
+
+function removeMountTrapping(index: number) {
+  const m = getMount()
+  m.trappings?.splice(index, 1)
+}
+
 defineExpose({
   saveSheet,
   loadUserCharacter,
@@ -326,13 +507,19 @@ defineExpose({
 <template>
   <main class="wfrp-sheet-body pa-3 pa-md-5">
 
-    <SheetHeaderBlock :character="character" />
-    <SheetCharacteristicsBlock :character="character" :get-char-current="getCharCurrent" />
+    <SheetHeaderBlock :character="character" :is-dirty="isDirty" @open-menu="emit('openMenu')" />
+    <SheetCharacteristicsBlock
+      :character="character"
+      :get-char-current="getCharCurrent"
+      :agility-penalty="agilityPenalty"
+    />
     <SheetVitalsBlock
       :character="character"
       :computed-walk="computedWalk"
       :computed-run="computedRun"
       :computed-max-wounds="computedMaxWounds"
+      :movement-penalty="movementPenalty"
+      :travel-fatigue="travelFatigue"
     />
     <SheetSkillsBlock
       :basic-skills="basicSkills"
@@ -362,9 +549,11 @@ defineExpose({
       :wealth="character.wealth"
       :computed-total-enc="computedTotalEnc"
       :computed-max-enc="computedMaxEnc"
+      :enc-breakdown="encBreakdown"
       @add-armour="addArmour"
       @remove-armour="removeArmour"
       @add-trapping="addTrapping"
+      @add-bag="addBag"
       @remove-trapping="removeTrapping"
     />
     <SheetSpellsMutationsBlock
@@ -373,6 +562,18 @@ defineExpose({
       @remove-spell="removeSpell"
       @add-mutation="addMutation"
       @remove-mutation="removeMutation"
+    />
+    <SheetMountBlock
+      v-if="!character.mountHidden"
+      :mount="getMount()"
+      @add-attack="addMountAttack"
+      @remove-attack="removeMountAttack"
+      @add-skill="addMountSkill"
+      @remove-skill="removeMountSkill"
+      @add-trait="addMountTrait"
+      @remove-trait="removeMountTrait"
+      @add-trapping="addMountTrapping"
+      @remove-trapping="removeMountTrapping"
     />
     <SheetAmbitionsNotesBlock :character="character" />
 

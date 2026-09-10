@@ -43,3 +43,6 @@ coverage.out
 *.out
 
 *.local*
+.wolf
+.gemini
+GEMINI.md

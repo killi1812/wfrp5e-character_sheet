@@ -32,16 +32,20 @@ defineEmits<{
       <div :class="[titleClass || 'text-subtitle-2', 'font-weight-black text-uppercase text-primary']">
         {{ title }}
       </div>
-      <v-btn
-        v-if="addLabel"
-        color="primary"
-        :size="addSize || 'x-small'"
-        prepend-icon="mdi-plus"
-        variant="tonal"
-        @click="$emit('add')"
-      >
-        {{ addLabel }}
-      </v-btn>
+      <div class="d-flex align-center gap-1">
+        <slot name="actions">
+          <v-btn
+            v-if="addLabel"
+            color="primary"
+            :size="addSize || 'x-small'"
+            prepend-icon="mdi-plus"
+            variant="tonal"
+            @click="$emit('add')"
+          >
+            {{ addLabel }}
+          </v-btn>
+        </slot>
+      </div>
     </div>
     <slot />
   </v-card>

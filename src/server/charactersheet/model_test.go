@@ -31,6 +31,17 @@ func sampleSheet() *charactersheet.CharacterSheet {
 		Advances3:         []bool{false},
 		Advances4:         []bool{false},
 		Status:            "Brass 2",
+		Careers: []charactersheet.CareerEntry{
+			{
+				Class:     "Warrior",
+				Career:    "Slayer",
+				Status:    "Brass 2",
+				Active:    true,
+				Advances2: []bool{true, false, true, false, false, false, false, false, false, false},
+				Advances3: []bool{false, false, false, false, false, false, false, false, false, false, false, false},
+				Advances4: []bool{false, false, false, false, false, false, false, false, false, false, false, false, false, false},
+			},
+		},
 		XpCurrent:         120,
 		XpSpent:           880,
 		XpTotal:           1000,
@@ -47,7 +58,9 @@ func sampleSheet() *charactersheet.CharacterSheet {
 			Fel: charactersheet.StatValue{Initial: 15, Advances: 0, Current: 15},
 		},
 		Fate:             2,
+		FateMax:          3,
 		Fortune:          2,
+		FortuneMax:       3,
 		Resilience:       3,
 		Resolve:          3,
 		Movement:         3,
@@ -103,16 +116,40 @@ func sampleSheet() *charactersheet.CharacterSheet {
 			{Name: "Iron Skin", Effect: "+1 AP all locations"},
 		},
 		Weapons: []charactersheet.WeaponItem{
-			{Name: "Rune Axe", Group: "Two-Handed", Enc: 3, RangeReach: "Average", Damage: "+SB+6", Qualities: "Impact, Hack"},
+			{Name: "Rune Axe", Group: "Two-Handed", Enc: 3, RangeReach: "Average", Damage: "+SB+6", Qualities: "Impact, Hack", Worn: true},
 		},
 		Armour: []charactersheet.ArmourItem{
-			{Name: "Leather Jerkin", Locations: "Body", Enc: 1, AP: 1, Qualities: ""},
+			{Name: "Leather Jerkin", Locations: "Body", Enc: 1, AP: 1, Qualities: "", Worn: true},
 		},
 		Trappings: []charactersheet.TrappingItem{
-			{Name: "Troll skull mug", Category: "Keepsake", Enc: 1, Description: "A mug made of bone"},
+			{
+				Name:        "Backpack",
+				Category:    "Containers",
+				Enc:         1,
+				Description: "Sturdy leather backpack",
+				IsBag:       true,
+				BagSize:     5,
+				ContainedTrappings: []charactersheet.TrappingItem{
+					{Name: "Troll skull mug", Category: "Keepsake", Enc: 1, Description: "A mug made of bone"},
+				},
+			},
 		},
 		SpellsAndPrayers: []charactersheet.SpellItem{
 			{Name: "Oath of Vengeance", CN: 0, Range: "Self", Target: "Self", Duration: "1 round", Description: "Gain hatred", Sin: 0},
+		},
+		Mount: &charactersheet.MountData{
+			Name: "Warhorse",
+			Characteristics: charactersheet.MountCharacteristics{
+				WS: &charactersheet.StatValue{Initial: 35, Current: 35},
+				S:  &charactersheet.StatValue{Initial: 45, Current: 45},
+				T:  &charactersheet.StatValue{Initial: 45, Current: 45},
+			},
+			Attacks: []charactersheet.MountAttack{
+				{Name: "Bite", SkillToRoll: "WS", DisplayValue: 35, Damage: "+SB+3", Qualities: ""},
+			},
+			Traits: []charactersheet.MountTrait{
+				{Name: "Size (Large)", Description: "Larger than humanoid"},
+			},
 		},
 		Notes:     "A great companion to Felix.",
 		CreatedAt: now,
@@ -136,6 +173,9 @@ func TestCharacterSheet_JsonSerialization(t *testing.T) {
 	assert.Equal(t, orig.Name, decoded.Name)
 	assert.Equal(t, orig.Species, decoded.Species)
 	assert.Equal(t, orig.Career, decoded.Career)
+	assert.Len(t, decoded.Careers, 1)
+	assert.Equal(t, "Slayer", decoded.Careers[0].Career)
+	assert.True(t, decoded.Careers[0].Active)
 	assert.Equal(t, orig.CareerAdvancement.Tier1, decoded.CareerAdvancement.Tier1)
 	assert.Equal(t, orig.Characteristics.WS.Current, decoded.Characteristics.WS.Current)
 	assert.Equal(t, orig.Characteristics.WP.Current, decoded.Characteristics.WP.Current)
@@ -143,8 +183,14 @@ func TestCharacterSheet_JsonSerialization(t *testing.T) {
 	assert.Len(t, decoded.Skills, 2)
 	assert.Len(t, decoded.Talents, 2)
 	assert.Len(t, decoded.Weapons, 1)
+	assert.True(t, decoded.Weapons[0].Worn)
 	assert.Len(t, decoded.Armour, 1)
+	assert.True(t, decoded.Armour[0].Worn)
 	assert.Len(t, decoded.Trappings, 1)
+	assert.True(t, decoded.Trappings[0].IsBag)
+	assert.Len(t, decoded.Trappings[0].ContainedTrappings, 1)
+	assert.NotNil(t, decoded.Mount)
+	assert.Equal(t, "Warhorse", decoded.Mount.Name)
 	assert.Len(t, decoded.SpellsAndPrayers, 1)
 	assert.Len(t, decoded.Mutations, 1)
 	assert.Equal(t, orig.Wealth.GC, decoded.Wealth.GC)

@@ -17,7 +17,15 @@ defineEmits<{
 
 <template>
   <!-- With tooltip -->
-  <v-tooltip v-if="tooltip" :text="tooltip" :location="tooltipLocation || 'top'">
+  <v-tooltip
+    v-if="tooltip"
+    :text="tooltip"
+    :location="tooltipLocation || 'top'"
+    :open-on-focus="false"
+    :open-on-click="false"
+    :open-delay="150"
+    :close-delay="50"
+  >
     <template #activator="{ props: tProps }">
       <v-text-field
         v-bind="tProps"

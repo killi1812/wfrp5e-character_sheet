@@ -19,7 +19,7 @@ const emit = defineEmits<{
 <template>
   <v-row dense class="mb-4">
     <!-- Spells & Prayers -->
-    <v-col cols="12" md="8">
+    <v-col v-if="!character.spellsHidden" cols="12" md="8">
       <SectionCard title="Spells & Prayers" add-label="Add Spell / Prayer" full-height @add="emit('addSpell')">
         <!-- Sin Counter Widget row -->
         <div class="d-flex justify-end align-center mb-2">
@@ -56,7 +56,15 @@ const emit = defineEmits<{
                 <v-text-field v-model="spell.duration" variant="plain" density="compact" hide-details placeholder="Instant" />
               </td>
               <td>
-                <v-text-field v-model="spell.description" variant="plain" density="compact" hide-details placeholder="Effect and rules description..." />
+                <v-textarea
+                  v-model="spell.description"
+                  variant="plain"
+                  density="compact"
+                  rows="1"
+                  auto-grow
+                  hide-details
+                  placeholder="Effect and rules description..."
+                />
               </td>
               <td class="text-right"><DeleteRowBtn @delete="emit('removeSpell', idx)" /></td>
             </tr>
@@ -66,7 +74,7 @@ const emit = defineEmits<{
     </v-col>
 
     <!-- Corruption & Mutations -->
-    <v-col cols="12" md="4">
+    <v-col cols="12" :md="character.spellsHidden ? 6 : 4">
       <SectionCard title="Corruption & Mutations" full-height>
         <v-row dense class="mb-3">
           <v-col cols="6">
@@ -96,11 +104,15 @@ const emit = defineEmits<{
             />
             <DeleteRowBtn @delete="emit('removeMutation', idx)" />
           </div>
-          <input
+          <v-textarea
             v-model="mut.effect"
-            type="text"
-            class="mutation-input text-caption text-medium-emphasis"
+            variant="plain"
+            density="compact"
+            rows="1"
+            auto-grow
+            hide-details
             placeholder="Effect / Description"
+            class="text-caption text-medium-emphasis"
           />
         </div>
       </SectionCard>
@@ -122,5 +134,9 @@ const emit = defineEmits<{
   background: transparent;
   outline: none;
   color: currentColor;
+}
+
+:deep(td) {
+  white-space: normal;
 }
 </style>
