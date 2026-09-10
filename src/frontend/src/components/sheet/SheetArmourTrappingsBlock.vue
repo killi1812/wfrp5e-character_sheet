@@ -4,6 +4,7 @@ import type { ArmourItem, TrappingItem } from '../../constants/placeholders'
 import { NEW_ITEM_TEMPLATES } from '../../constants/placeholders'
 import SectionCard from '../ui/SectionCard.vue'
 import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
+import AddBtn from '../ui/AddBtn.vue'
 
 const props = defineProps<{
   armour: ArmourItem[]
@@ -153,27 +154,24 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
           <tbody>
             <tr v-for="(arm, idx) in armour" :key="idx">
               <td style="min-width: 140px;">
-                <v-text-field v-model="arm.name" variant="plain" density="compact" hide-details placeholder="Armour Name" />
+                <v-text-field v-model="arm.name" variant="plain" density="compact" hide-details
+                  placeholder="Armour Name" />
               </td>
               <td>
-                <v-text-field v-model="arm.locations" variant="plain" density="compact" hide-details placeholder="Body, Arms" />
+                <v-text-field v-model="arm.locations" variant="plain" density="compact" hide-details
+                  placeholder="Body, Arms" />
               </td>
               <td style="max-width: 50px;">
-                <v-text-field v-model.number="arm.enc" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" />
+                <v-text-field v-model.number="arm.enc" type="number" variant="plain" density="compact" hide-details
+                  class="text-center" placeholder="0" />
               </td>
               <td style="max-width: 50px;">
-                <v-text-field v-model.number="arm.ap" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" />
+                <v-text-field v-model.number="arm.ap" type="number" variant="plain" density="compact" hide-details
+                  class="text-center" placeholder="0" />
               </td>
               <td>
-                <v-textarea
-                  v-model="arm.qualities"
-                  variant="plain"
-                  density="compact"
-                  rows="1"
-                  auto-grow
-                  hide-details
-                  placeholder="Flexible"
-                />
+                <v-textarea v-model="arm.qualities" variant="plain" density="compact" rows="1" auto-grow hide-details
+                  placeholder="Flexible" />
               </td>
               <td class="text-center">
                 <v-checkbox-btn v-model="arm.worn" density="compact" hide-details color="primary" />
@@ -191,16 +189,13 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
     <v-col cols="12" md="6">
       <SectionCard title="Trappings & Wealth" full-height>
         <template #actions>
-          <v-btn size="x-small" color="primary" variant="tonal" prepend-icon="mdi-plus" class="mr-1" @click="emit('addTrapping')">
-            Add Item
-          </v-btn>
-          <v-btn size="x-small" color="primary" variant="tonal" prepend-icon="mdi-plus" @click="emit('addBag')">
-            Add Bag
-          </v-btn>
+          <AddBtn label="Add Item" class="mr-1" @click="emit('addTrapping')" />
+          <AddBtn label="Add Bag" @click="emit('addBag')" />
         </template>
 
         <!-- Encumbrance Summary with Hover Breakdown -->
-        <div class="d-flex justify-space-between align-center text-caption font-weight-bold mb-3 text-primary pa-2 bg-surface-variant rounded border">
+        <div
+          class="d-flex justify-space-between align-center text-caption font-weight-bold mb-3 text-primary pa-2 bg-surface-variant rounded border">
           <v-tooltip location="top" :open-on-focus="false">
             <template #activator="{ props: tProps }">
               <span v-bind="tProps" class="cursor-pointer d-flex align-center">
@@ -240,23 +235,22 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
             <tbody>
               <template v-for="(t, idx) in trappings" :key="t.id || idx">
                 <!-- REGULAR ITEM ROW -->
-                <tr
-                  v-if="!t.isBag"
-                  draggable="true"
-                  class="trapping-item-row"
-                  @dragstart="onDragStart($event, t, null)"
-                >
+                <tr v-if="!t.isBag" draggable="true" class="trapping-item-row"
+                  @dragstart="onDragStart($event, t, null)">
                   <td class="text-center pa-0 drag-handle" style="cursor: grab;">
                     <v-icon icon="mdi-drag-vertical" size="small" color="medium-emphasis" />
                   </td>
                   <td>
-                    <v-text-field v-model="t.name" variant="plain" density="compact" hide-details placeholder="Item Name" />
+                    <v-text-field v-model="t.name" variant="plain" density="compact" hide-details
+                      placeholder="Item Name" />
                   </td>
                   <td style="max-width: 60px;">
-                    <v-text-field v-model.number="t.enc" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" />
+                    <v-text-field v-model.number="t.enc" type="number" variant="plain" density="compact" hide-details
+                      class="text-center" placeholder="0" />
                   </td>
                   <td style="max-width: 70px;">
-                    <v-text-field v-model.number="t.qty" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="1" />
+                    <v-text-field v-model.number="t.qty" type="number" variant="plain" density="compact" hide-details
+                      class="text-center" placeholder="1" />
                   </td>
                   <td class="text-center">
                     <v-checkbox-btn v-model="t.worn" density="compact" hide-details color="primary" />
@@ -267,36 +261,29 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
                 </tr>
 
                 <!-- BAG / CONTAINER ROW -->
-                <tr
-                  v-else
-                  class="bag-row bg-surface-variant"
-                  @dragover.prevent
-                  @drop.stop="onDropIntoBag($event, t)"
-                >
+                <tr v-else class="bag-row bg-surface-variant" @dragover.prevent @drop.stop="onDropIntoBag($event, t)">
                   <td class="text-center pa-0">
-                    <v-btn
-                      icon
-                      size="x-small"
-                      variant="text"
-                      @click="toggleBag(t.id || String(idx))"
-                    >
+                    <v-btn icon size="x-small" variant="text" @click="toggleBag(t.id || String(idx))">
                       <v-icon :icon="openBags[t.id || String(idx)] ? 'mdi-chevron-down' : 'mdi-chevron-right'" />
                     </v-btn>
                   </td>
                   <td>
                     <div class="d-flex align-center">
                       <v-icon icon="mdi-bag-personal" size="small" color="secondary" class="mr-1" />
-                      <v-text-field v-model="t.name" variant="plain" density="compact" hide-details placeholder="Bag Name" class="font-weight-bold" />
+                      <v-text-field v-model="t.name" variant="plain" density="compact" hide-details
+                        placeholder="Bag Name" class="font-weight-bold" />
                     </div>
                   </td>
                   <td style="max-width: 60px;">
-                    <v-text-field v-model.number="t.enc" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="1" />
+                    <v-text-field v-model.number="t.enc" type="number" variant="plain" density="compact" hide-details
+                      class="text-center" placeholder="1" />
                   </td>
                   <td style="min-width: 100px;">
                     <div class="d-flex align-center gap-1 justify-center">
-                      <v-text-field v-model.number="t.bagSize" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="5" style="max-width: 45px;" />
+                      <v-text-field v-model.number="t.bagSize" type="number" variant="plain" density="compact"
+                        hide-details class="text-center" placeholder="5" style="max-width: 45px;" />
                       <span class="text-caption text-medium-emphasis font-weight-bold">
-                        ({{ getContainedEnc(t) }}/{{ t.bagSize || 0 }} Enc)
+                        ({{ getContainedEnc(t) }}/{{ t.bagSize || 0 }})
                       </span>
                     </div>
                   </td>
@@ -311,98 +298,99 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
                 <!-- BAG CONTENTS ACCORDION SECTION -->
                 <tr v-if="t.isBag && openBags[t.id || String(idx)]" class="bag-contents-row">
                   <td colspan="6" class="pa-2 bg-surface">
-                    <div class="bag-inner-box pa-2 rounded border" @dragover.prevent @drop.stop="onDropIntoBag($event, t)">
+                    <div class="bag-inner-box pa-2 rounded border" @dragover.prevent
+                      @drop.stop="onDropIntoBag($event, t)">
                       <div class="d-flex justify-space-between align-center mb-1">
                         <span class="text-caption font-weight-bold text-secondary">
                           Contents of {{ t.name || 'Bag' }} (Excluded from personal Enc)
                         </span>
-                        <v-btn size="x-small" color="secondary" variant="text" prepend-icon="mdi-plus" @click="addItemToBag(t)">
-                          Add item to bag
-                        </v-btn>
+                        <AddBtn label="Add item to bag" color="secondary" variant="text" @click="addItemToBag(t)" />
                       </div>
 
-                      <div v-if="!t.containedTrappings || t.containedTrappings.length === 0" class="text-caption text-medium-emphasis font-italic py-2 text-center">
+                      <div v-if="!t.containedTrappings || t.containedTrappings.length === 0"
+                        class="text-caption text-medium-emphasis font-italic py-2 text-center">
                         Bag is empty. Drag items here or click "+ Add item to bag".
                       </div>
 
                       <v-table v-else density="compact" class="bg-transparent text-caption">
-                        <tbody>
-                          <tr
-                            v-for="(sub, subIdx) in t.containedTrappings"
-                            :key="sub.id || subIdx"
-                            draggable="true"
-                            class="sub-item-row"
-                            @dragstart="onDragStart($event, sub, t.id || null)"
-                          >
-                            <td style="width: 24px;" class="drag-handle text-center">
-                              <v-icon icon="mdi-drag-vertical" size="small" color="medium-emphasis" />
-                            </td>
-                            <td>
-                              <v-text-field v-model="sub.name" variant="plain" density="compact" hide-details placeholder="Item Name" />
-                            </td>
-                            <td style="width: 50px;">
-                              <v-text-field v-model.number="sub.enc" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" />
-                            </td>
-                            <td style="width: 50px;">
-                              <v-text-field v-model.number="sub.qty" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="1" />
-                            </td>
-                            <td style="width: 40px;" class="text-center">
-                              <v-checkbox-btn v-model="sub.worn" density="compact" hide-details color="primary" />
-                            </td>
-                            <td style="width: 36px;" class="text-right">
-                              <DeleteRowBtn @delete="removeItemFromBag(t, subIdx)" />
-                            </td>
-                          </tr>
-                        </tbody>
-                      </v-table>
-                    </div>
-                  </td>
-                </tr>
-              </template>
+            <tbody>
+              <tr v-for="(sub, subIdx) in t.containedTrappings" :key="sub.id || subIdx" draggable="true"
+                class="sub-item-row" @dragstart="onDragStart($event, sub, t.id || null)">
+                <td style="width: 24px;" class="drag-handle text-center">
+                  <v-icon icon="mdi-drag-vertical" size="small" color="medium-emphasis" />
+                </td>
+                <td>
+                  <v-text-field v-model="sub.name" variant="plain" density="compact" hide-details
+                    placeholder="Item Name" />
+                </td>
+                <td style="width: 50px;">
+                  <v-text-field v-model.number="sub.enc" type="number" variant="plain" density="compact" hide-details
+                    class="text-center" placeholder="0" />
+                </td>
+                <td style="width: 50px;">
+                  <v-text-field v-model.number="sub.qty" type="number" variant="plain" density="compact" hide-details
+                    class="text-center" placeholder="1" />
+                </td>
+                <td style="width: 40px;" class="text-center">
+                  <v-checkbox-btn v-model="sub.worn" density="compact" hide-details color="primary" />
+                </td>
+                <td style="width: 36px;" class="text-right">
+                  <DeleteRowBtn @delete="removeItemFromBag(t, subIdx)" />
+                </td>
+              </tr>
             </tbody>
           </v-table>
         </div>
+        </td>
+        </tr>
+</template>
+</tbody>
+</v-table>
+</div>
 
-        <!-- Wealth moved down with bigger font and coins enc count -->
-        <div class="pa-3 bg-surface-variant rounded-lg border">
-          <div class="d-flex justify-space-between align-center mb-2">
-            <span class="text-caption font-weight-bold text-primary">Money / Wealth</span>
-            <span class="text-caption text-medium-emphasis">
-              Total: {{ totalCoins }} coins (+{{ coinsEnc }} Enc, 1 per 200 coins)
-            </span>
-          </div>
-          <v-row dense>
-            <v-col cols="4">
-              <div class="wealth-box text-center pa-2 rounded border bg-surface">
-                <div class="text-caption text-medium-emphasis font-weight-bold mb-1">GC (Gold)</div>
-                <input v-model.number="wealth.gc" type="number" class="wealth-input font-weight-bold" placeholder="0" />
-              </div>
-            </v-col>
-            <v-col cols="4">
-              <div class="wealth-box text-center pa-2 rounded border bg-surface">
-                <div class="text-caption text-medium-emphasis font-weight-bold mb-1">SS (Silver)</div>
-                <input v-model.number="wealth.ss" type="number" class="wealth-input font-weight-bold" placeholder="0" />
-              </div>
-            </v-col>
-            <v-col cols="4">
-              <div class="wealth-box text-center pa-2 rounded border bg-surface">
-                <div class="text-caption text-medium-emphasis font-weight-bold mb-1">BP (Brass)</div>
-                <input v-model.number="wealth.bp" type="number" class="wealth-input font-weight-bold" placeholder="0" />
-              </div>
-            </v-col>
-          </v-row>
-        </div>
-      </SectionCard>
+<!-- Wealth moved down with bigger font and coins enc count -->
+<div class="pa-3 bg-surface-variant rounded-lg border">
+  <div class="d-flex justify-space-between align-center mb-2">
+    <span class="text-caption font-weight-bold text-primary">Money / Wealth</span>
+    <span class="text-caption text-medium-emphasis">
+      Total: {{ totalCoins }} coins (+{{ coinsEnc }} Enc, 1 per 200 coins)
+    </span>
+  </div>
+  <v-row dense>
+    <v-col cols="4">
+      <div class="wealth-box text-center pa-2 rounded border bg-surface">
+        <div class="text-caption text-medium-emphasis font-weight-bold mb-1">GC (Gold)</div>
+        <input v-model.number="wealth.gc" type="number" class="wealth-input font-weight-bold" placeholder="0" />
+      </div>
+    </v-col>
+    <v-col cols="4">
+      <div class="wealth-box text-center pa-2 rounded border bg-surface">
+        <div class="text-caption text-medium-emphasis font-weight-bold mb-1">SS (Silver)</div>
+        <input v-model.number="wealth.ss" type="number" class="wealth-input font-weight-bold" placeholder="0" />
+      </div>
+    </v-col>
+    <v-col cols="4">
+      <div class="wealth-box text-center pa-2 rounded border bg-surface">
+        <div class="text-caption text-medium-emphasis font-weight-bold mb-1">BP (Brass)</div>
+        <input v-model.number="wealth.bp" type="number" class="wealth-input font-weight-bold" placeholder="0" />
+      </div>
     </v-col>
   </v-row>
+</div>
+</SectionCard>
+</v-col>
+</v-row>
 </template>
 
 <style scoped>
-.gap-1 { gap: 4px; }
+.gap-1 {
+  gap: 4px;
+}
 
 .wealth-box {
   transition: border-color 0.2s;
 }
+
 .wealth-box:focus-within {
   border-color: rgb(var(--v-theme-primary)) !important;
 }

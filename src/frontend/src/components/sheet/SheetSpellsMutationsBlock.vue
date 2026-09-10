@@ -2,6 +2,7 @@
 import type { CharacterModel } from '../../constants/placeholders'
 import SectionCard from '../ui/SectionCard.vue'
 import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
+import AddBtn from '../ui/AddBtn.vue'
 import SinCounter from '../ui/SinCounter.vue'
 
 defineProps<{
@@ -87,7 +88,7 @@ const emit = defineEmits<{
 
         <div class="d-flex justify-space-between align-center mb-2">
           <span class="text-caption font-weight-bold text-primary">Mutations:</span>
-          <v-btn icon="mdi-plus" size="x-small" color="primary" variant="text" @click="emit('addMutation')" />
+          <AddBtn variant="text" @click="emit('addMutation')" />
         </div>
 
         <div v-if="character.mutations.length === 0" class="text-caption text-medium-emphasis font-italic py-2 text-center">

@@ -35,12 +35,17 @@ function addCareer() {
 }
 
 function removeCareer(index: number) {
-  if (props.character.careers.length <= 1) return
   const wasActive = props.character.careers[index].active
   props.character.careers.splice(index, 1)
-  if (wasActive && props.character.careers.length > 0) {
-    props.character.careers[0].active = true
-    syncActiveCareer(props.character.careers[0])
+  if (props.character.careers.length > 0) {
+    if (wasActive) {
+      props.character.careers[0].active = true
+      syncActiveCareer(props.character.careers[0])
+    }
+  } else {
+    props.character.career = ''
+    props.character.class = ''
+    props.character.status = ''
   }
 }
 
@@ -168,6 +173,10 @@ function syncActiveCareer(c: CareerEntry) {
     <!-- Career & Advances (70% on desktop) -->
     <div class="careers-col">
       <SectionCard title="Careers & Advances" full-height add-label="Add Career" @add="addCareer">
+        <div v-if="character.careers.length === 0" class="text-caption text-medium-emphasis font-italic py-4 text-center">
+          No careers added. Click "+ Add Career" to add one.
+        </div>
+
         <div v-for="(c, idx) in character.careers" :key="idx" class="career-row-card mb-3 pa-3 rounded-lg border" :class="{ 'career-active': c.active }">
           <!-- Career Header info: Active toggle, Class, Career, Status, Delete -->
           <div class="d-flex flex-wrap align-center gap-2 mb-2">
@@ -187,7 +196,7 @@ function syncActiveCareer(c: CareerEntry) {
               </template>
             </v-tooltip>
 
-            <div class="flex-grow-1" style="min-width: 140px;">
+            <div style="width: 140px;">
               <v-text-field
                 v-model="c.class"
                 label="Class"
@@ -198,7 +207,7 @@ function syncActiveCareer(c: CareerEntry) {
                 @update:model-value="c.active && syncActiveCareer(c)"
               />
             </div>
-            <div class="flex-grow-1" style="min-width: 160px;">
+            <div class="flex-grow-1" style="min-width: 150px;">
               <v-text-field
                 v-model="c.career"
                 label="Career"
@@ -209,7 +218,7 @@ function syncActiveCareer(c: CareerEntry) {
                 @update:model-value="c.active && syncActiveCareer(c)"
               />
             </div>
-            <div style="width: 110px;">
+            <div style="width: 150px;">
               <v-text-field
                 v-model="c.status"
                 label="Status"
@@ -221,77 +230,89 @@ function syncActiveCareer(c: CareerEntry) {
               />
             </div>
 
-            <DeleteRowBtn v-if="character.careers.length > 1" @delete="removeCareer(idx)" />
+            <DeleteRowBtn @delete="removeCareer(idx)" />
           </div>
 
           <!-- Tier Advances (Rank 2: 10 boxes in 2 rows of 5, Rank 3: 12 boxes in 2 rows of 6, Rank 4: 14 boxes in 2 rows of 7) -->
           <v-row dense class="pt-2 border-t">
             <!-- Tier 2 (10 boxes: 2 rows of 5) -->
             <v-col cols="12" md="4" class="tier-col">
-              <div class="d-flex justify-space-between align-center mb-1">
-                <span class="text-caption font-weight-bold text-primary">Tier 2 Advances</span>
-                <span class="text-caption text-medium-emphasis">{{ c.advances2.filter(Boolean).length }}/10</span>
-              </div>
-              <div class="tier-boxes-grid grid-5">
-                <v-tooltip v-for="i in 10" :key="'adv2-' + i" :text="`Tier 2 Advance ${i}`" location="top" :open-on-focus="false">
-                  <template #activator="{ props: tProps }">
-                    <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: c.advances2[i - 1] }">
-                      <input
-                        type="checkbox"
-                        :checked="c.advances2[i - 1]"
-                        class="career-checkbox-input"
-                        @change="c.advances2[i - 1] = !c.advances2[i - 1]"
-                      />
-                      <span class="career-checkbox-box"></span>
-                    </label>
-                  </template>
-                </v-tooltip>
+              <div class="tier-card pa-2 rounded border bg-surface h-100">
+                <div class="d-flex justify-space-between align-center mb-2">
+                  <span class="text-caption font-weight-bold text-primary">Tier 2 Advances</span>
+                  <v-chip size="x-small" variant="tonal" color="primary" class="font-weight-bold">
+                    {{ c.advances2.filter(Boolean).length }}/10
+                  </v-chip>
+                </div>
+                <div class="tier-boxes-grid grid-5">
+                  <v-tooltip v-for="i in 10" :key="'adv2-' + i" :text="`Tier 2 Advance ${i}`" location="top" :open-on-focus="false">
+                    <template #activator="{ props: tProps }">
+                      <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: c.advances2[i - 1] }">
+                        <input
+                          type="checkbox"
+                          :checked="c.advances2[i - 1]"
+                          class="career-checkbox-input"
+                          @change="c.advances2[i - 1] = !c.advances2[i - 1]"
+                        />
+                        <span class="career-checkbox-box"></span>
+                      </label>
+                    </template>
+                  </v-tooltip>
+                </div>
               </div>
             </v-col>
 
             <!-- Tier 3 (12 boxes: 2 rows of 6) -->
             <v-col cols="12" md="4" class="tier-col">
-              <div class="d-flex justify-space-between align-center mb-1">
-                <span class="text-caption font-weight-bold text-primary">Tier 3 Advances</span>
-                <span class="text-caption text-medium-emphasis">{{ c.advances3.filter(Boolean).length }}/12</span>
-              </div>
-              <div class="tier-boxes-grid grid-6">
-                <v-tooltip v-for="i in 12" :key="'adv3-' + i" :text="`Tier 3 Advance ${i}`" location="top" :open-on-focus="false">
-                  <template #activator="{ props: tProps }">
-                    <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: c.advances3[i - 1] }">
-                      <input
-                        type="checkbox"
-                        :checked="c.advances3[i - 1]"
-                        class="career-checkbox-input"
-                        @change="c.advances3[i - 1] = !c.advances3[i - 1]"
-                      />
-                      <span class="career-checkbox-box"></span>
-                    </label>
-                  </template>
-                </v-tooltip>
+              <div class="tier-card pa-2 rounded border bg-surface h-100">
+                <div class="d-flex justify-space-between align-center mb-2">
+                  <span class="text-caption font-weight-bold text-primary">Tier 3 Advances</span>
+                  <v-chip size="x-small" variant="tonal" color="primary" class="font-weight-bold">
+                    {{ c.advances3.filter(Boolean).length }}/12
+                  </v-chip>
+                </div>
+                <div class="tier-boxes-grid grid-6">
+                  <v-tooltip v-for="i in 12" :key="'adv3-' + i" :text="`Tier 3 Advance ${i}`" location="top" :open-on-focus="false">
+                    <template #activator="{ props: tProps }">
+                      <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: c.advances3[i - 1] }">
+                        <input
+                          type="checkbox"
+                          :checked="c.advances3[i - 1]"
+                          class="career-checkbox-input"
+                          @change="c.advances3[i - 1] = !c.advances3[i - 1]"
+                        />
+                        <span class="career-checkbox-box"></span>
+                      </label>
+                    </template>
+                  </v-tooltip>
+                </div>
               </div>
             </v-col>
 
             <!-- Tier 4 (14 boxes: 2 rows of 7) -->
             <v-col cols="12" md="4" class="tier-col">
-              <div class="d-flex justify-space-between align-center mb-1">
-                <span class="text-caption font-weight-bold text-primary">Tier 4 Advances</span>
-                <span class="text-caption text-medium-emphasis">{{ c.advances4.filter(Boolean).length }}/14</span>
-              </div>
-              <div class="tier-boxes-grid grid-7">
-                <v-tooltip v-for="i in 14" :key="'adv4-' + i" :text="`Tier 4 Advance ${i}`" location="top" :open-on-focus="false">
-                  <template #activator="{ props: tProps }">
-                    <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: c.advances4[i - 1] }">
-                      <input
-                        type="checkbox"
-                        :checked="c.advances4[i - 1]"
-                        class="career-checkbox-input"
-                        @change="c.advances4[i - 1] = !c.advances4[i - 1]"
-                      />
-                      <span class="career-checkbox-box"></span>
-                    </label>
-                  </template>
-                </v-tooltip>
+              <div class="tier-card pa-2 rounded border bg-surface h-100">
+                <div class="d-flex justify-space-between align-center mb-2">
+                  <span class="text-caption font-weight-bold text-primary">Tier 4 Advances</span>
+                  <v-chip size="x-small" variant="tonal" color="primary" class="font-weight-bold">
+                    {{ c.advances4.filter(Boolean).length }}/14
+                  </v-chip>
+                </div>
+                <div class="tier-boxes-grid grid-7">
+                  <v-tooltip v-for="i in 14" :key="'adv4-' + i" :text="`Tier 4 Advance ${i}`" location="top" :open-on-focus="false">
+                    <template #activator="{ props: tProps }">
+                      <label v-bind="tProps" class="career-checkbox-label" :class="{ checked: c.advances4[i - 1] }">
+                        <input
+                          type="checkbox"
+                          :checked="c.advances4[i - 1]"
+                          class="career-checkbox-input"
+                          @change="c.advances4[i - 1] = !c.advances4[i - 1]"
+                        />
+                        <span class="career-checkbox-box"></span>
+                      </label>
+                    </template>
+                  </v-tooltip>
+                </div>
               </div>
             </v-col>
           </v-row>
@@ -354,6 +375,12 @@ function syncActiveCareer(c: CareerEntry) {
   border-color: rgb(var(--v-theme-primary));
   background: rgb(var(--v-theme-primary));
   color: rgb(var(--v-theme-on-primary));
+}
+
+.tier-card {
+  background: rgba(var(--v-theme-surface), 0.7);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 6px;
 }
 
 .tier-boxes-grid {

@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import AddBtn from './AddBtn.vue'
+
 defineProps<{
   title: string
   addLabel?: string
-  addSize?: 'x-small' | 'small'
+  addSize?: string
   elevation?: number
   color?: string
   cardVariant?: 'elevated' | 'flat' | 'tonal' | 'outlined' | 'text' | 'plain'
@@ -34,16 +36,12 @@ defineEmits<{
       </div>
       <div class="d-flex align-center gap-1">
         <slot name="actions">
-          <v-btn
+          <AddBtn
             v-if="addLabel"
-            color="primary"
-            :size="addSize || 'x-small'"
-            prepend-icon="mdi-plus"
-            variant="tonal"
+            :label="addLabel"
+            :size="addSize || 'small'"
             @click="$emit('add')"
-          >
-            {{ addLabel }}
-          </v-btn>
+          />
         </slot>
       </div>
     </div>
