@@ -259,14 +259,14 @@ async function importJson(file: File) {
       careers: Array.isArray(rawChar.careers)
         ? rawChar.careers
         : (rawChar.career ? [{
-            class: rawChar.class || '',
-            career: rawChar.career,
-            status: rawChar.status || '',
-            active: true,
-            advances2: Array(10).fill(false),
-            advances3: Array(12).fill(false),
-            advances4: Array(14).fill(false),
-          }] : []),
+          class: rawChar.class || '',
+          career: rawChar.career,
+          status: rawChar.status || '',
+          active: true,
+          advances2: Array(10).fill(false),
+          advances3: Array(12).fill(false),
+          advances4: Array(14).fill(false),
+        }] : []),
       talents: Array.isArray(rawChar.talents) ? rawChar.talents : [],
       weapons: Array.isArray(rawChar.weapons) ? rawChar.weapons : [],
       armour: Array.isArray(rawChar.armour) ? rawChar.armour : [],
@@ -389,74 +389,29 @@ defineExpose({
   <main class="wfrp-sheet-body pa-3 pa-md-5">
 
     <SheetHeaderBlock :character="character" :is-dirty="isDirty" @open-menu="emit('openMenu')" />
-    <SheetCharacteristicsBlock
-      :character="character"
-      :get-char-current="getCharCurrent"
-      :agility-penalty="agilityPenalty"
-    />
-    <SheetVitalsBlock
-      :character="character"
-      :computed-walk="computedWalk"
-      :computed-run="computedRun"
-      :computed-max-wounds="computedMaxWounds"
-      :movement-penalty="movementPenalty"
-      :travel-fatigue="travelFatigue"
-    />
-    <SheetSkillsBlock
-      :basic-skills="basicSkills"
-      :advanced-skills="advancedSkills"
-      :get-char-current="getCharCurrent"
-      @add-advanced-skill="addAdvancedSkill"
-      @remove-advanced-skill="removeAdvancedSkill"
-    />
-    <SheetTalentsBlock
-      :talents="character.talents"
-      :languages="languages"
-      :get-char-current="getCharCurrent"
-      @add-talent="addTalent"
-      @remove-talent="removeTalent"
-      @add-language="addLanguage"
-      @remove-language="removeLanguage"
-    />
-    <SheetWeaponsBlock
-      :weapons="character.weapons"
-      :get-char-bonus="getCharBonus"
-      @add-weapon="addWeapon"
-      @remove-weapon="removeWeapon"
-    />
-    <SheetArmourTrappingsBlock
-      :armour="character.armour"
-      :trappings="character.trappings"
-      :wealth="character.wealth"
-      :computed-total-enc="computedTotalEnc"
-      :computed-max-enc="computedMaxEnc"
-      :enc-breakdown="encBreakdown"
-      @add-armour="addArmour"
-      @remove-armour="removeArmour"
-      @add-trapping="addTrapping"
-      @add-bag="addBag"
-      @remove-trapping="removeTrapping"
-    />
-    <SheetSpellsMutationsBlock
-      :character="character"
-      @add-spell="addSpell"
-      @remove-spell="removeSpell"
-      @add-mutation="addMutation"
-      @remove-mutation="removeMutation"
-    />
-    <SheetMountBlock
-      v-if="!character.mountHidden"
-      :mount="getMount()"
-      @add-attack="addMountAttack"
-      @remove-attack="removeMountAttack"
-      @add-skill="addMountSkill"
-      @remove-skill="removeMountSkill"
-      @add-trait="addMountTrait"
-      @remove-trait="removeMountTrait"
-      @add-trapping="addMountTrapping"
-      @remove-trapping="removeMountTrapping"
-    />
+    <SheetCharacteristicsBlock :character="character" :get-char-current="getCharCurrent"
+      :agility-penalty="agilityPenalty" />
+    <SheetVitalsBlock :character="character" :computed-walk="computedWalk" :computed-run="computedRun"
+      :computed-max-wounds="computedMaxWounds" :movement-penalty="movementPenalty" :travel-fatigue="travelFatigue" />
+    <SheetSkillsBlock :basic-skills="basicSkills" :advanced-skills="advancedSkills" :get-char-current="getCharCurrent"
+      @add-advanced-skill="addAdvancedSkill" @remove-advanced-skill="removeAdvancedSkill" />
+    <SheetTalentsBlock :talents="character.talents" :languages="languages" :get-char-current="getCharCurrent"
+      @add-talent="addTalent" @remove-talent="removeTalent" @add-language="addLanguage"
+      @remove-language="removeLanguage" />
+    <SheetWeaponsBlock :weapons="character.weapons" :get-char-bonus="getCharBonus" @add-weapon="addWeapon"
+      @remove-weapon="removeWeapon" />
+    <SheetArmourTrappingsBlock :armour="character.armour" :trappings="character.trappings" :wealth="character.wealth"
+      :computed-total-enc="computedTotalEnc" :computed-max-enc="computedMaxEnc" :enc-breakdown="encBreakdown"
+      @add-armour="addArmour" @remove-armour="removeArmour" @add-trapping="addTrapping" @add-bag="addBag"
+      @remove-trapping="removeTrapping" />
+    <SheetSpellsMutationsBlock :character="character" @add-spell="addSpell" @remove-spell="removeSpell"
+      @add-mutation="addMutation" @remove-mutation="removeMutation" />
+
     <SheetAmbitionsNotesBlock :character="character" />
+    <SheetMountBlock v-if="!character.mountHidden" :mount="getMount()" @add-attack="addMountAttack"
+      @remove-attack="removeMountAttack" @add-skill="addMountSkill" @remove-skill="removeMountSkill"
+      @add-trait="addMountTrait" @remove-trait="removeMountTrait" @add-trapping="addMountTrapping"
+      @remove-trapping="removeMountTrapping" />
 
     <!-- Feedback Snackbar -->
     <v-snackbar v-model="saveSnackbar" :timeout="2500" color="surface" location="bottom end" class="border">
@@ -469,5 +424,7 @@ defineExpose({
 </template>
 
 <style scoped>
-.gap-2 { gap: 8px; }
+.gap-2 {
+  gap: 8px;
+}
 </style>

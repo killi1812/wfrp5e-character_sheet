@@ -35,29 +35,14 @@ function handleClick(event: MouseEvent) {
   <v-tooltip :text="active ? tooltipActive : tooltipInactive" location="top" :open-on-focus="false">
     <template #activator="{ props: tProps }">
       <!-- Char style '!' button (e.g. Characteristics header) -->
-      <button
-        v-if="asChar"
-        v-bind="tProps"
-        type="button"
-        class="important-char-btn"
-        :class="{ active }"
-        @click="handleClick"
-      >
+      <button v-if="asChar" v-bind="tProps" type="button" class="important-char-btn" :class="{ active }"
+        @click="handleClick">
         !
       </button>
 
       <!-- Icon button (e.g. Skills, Talents, Languages) -->
-      <v-btn
-        v-else
-        v-bind="tProps"
-        icon
-        :size="size"
-        variant="text"
-        density="compact"
-        class="important-icon-btn"
-        :class="{ active }"
-        @click="handleClick"
-      >
+      <v-btn v-else v-bind="tProps" icon :size="size" variant="text" density="compact" class="important-icon-btn"
+        :class="{ active }" @click="handleClick">
         <v-icon :size="iconSize">
           {{ active ? 'mdi-alert-circle' : 'mdi-alert-circle-outline' }}
         </v-icon>
@@ -114,6 +99,6 @@ function handleClick(event: MouseEvent) {
 
 .important-icon-btn.active {
   opacity: 1;
-  color: rgb(var(--v-theme-warning)) !important;
+  color: rgb(var(--v-theme-warning));
 }
 </style>

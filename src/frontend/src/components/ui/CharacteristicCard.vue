@@ -41,14 +41,11 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <v-card
-    color="surface-variant"
-    variant="outlined"
-    class="pa-2 rounded text-center char-card position-relative"
-    :class="{ 'char-important': isImportant }"
-  >
+  <v-card color="surface-variant" variant="outlined" class="pa-2 rounded text-center char-card position-relative"
+    :class="{ 'char-important': isImportant }">
     <!-- Header with Code, Tooltip, and Actions (Important or Nullable Toggle) -->
-    <div class="char-header position-relative border-bottom pb-1 mb-2 d-flex align-center" :class="nullable ? 'justify-space-between' : 'justify-center'">
+    <div class="char-header position-relative border-bottom pb-1 mb-2 d-flex align-center"
+      :class="nullable ? 'justify-space-between' : 'justify-center'">
       <v-tooltip :text="name ? `${name}${hint ? ' — ' + hint : ''}` : code" location="top" :open-on-focus="false">
         <template #activator="{ props: tProps }">
           <div v-bind="tProps" class="text-subtitle-2 font-weight-black text-primary cursor-pointer px-1">
@@ -58,26 +55,9 @@ const emit = defineEmits<{
       </v-tooltip>
 
       <!-- Important toggle button (!) -->
-      <ImportantBtn
-        v-if="showImportant"
-        as-char
-        :active="isImportant"
-        class="important-toggle-btn"
-        @toggle="emit('toggleImportant')"
-      />
+      <ImportantBtn v-if="showImportant" as-char :active="isImportant" class="important-toggle-btn"
+        @toggle="emit('toggleImportant')" />
 
-      <!-- Nullable toggle (+ / x for mount stats) -->
-      <v-btn
-        v-if="nullable"
-        icon
-        size="16"
-        variant="plain"
-        class="opacity-60"
-        :title="isNull ? 'Enable stat' : 'Clear to None'"
-        @click="emit('toggleNullable')"
-      >
-        <v-icon size="12">{{ isNull ? 'mdi-plus' : 'mdi-close' }}</v-icon>
-      </v-btn>
     </div>
 
     <!-- Disabled / Null State -->
@@ -90,57 +70,38 @@ const emit = defineEmits<{
       <!-- Initial Field -->
       <div class="d-flex align-center justify-space-between mb-1 px-1">
         <span class="text-caption text-high-emphasis font-weight-medium" style="font-size: 0.75rem;">Init</span>
-        <input
-          :value="initial ?? 0"
-          type="number"
-          class="char-num-input"
-          placeholder="0"
-          @input="emit('update:initial', Number(($event.target as HTMLInputElement).value) || 0)"
-        />
+        <input :value="initial ?? 0" type="number" class="char-num-input" placeholder="0"
+          @input="emit('update:initial', Number(($event.target as HTMLInputElement).value) || 0)" />
       </div>
 
       <!-- Advances Field -->
       <div class="d-flex align-center justify-space-between mb-2 px-1">
         <span class="text-caption text-high-emphasis font-weight-medium" style="font-size: 0.75rem;">Adv</span>
-        <input
-          :value="advances ?? 0"
-          type="number"
-          class="char-num-input adv-input"
-          placeholder="0"
-          @input="emit('update:advances', Number(($event.target as HTMLInputElement).value) || 0)"
-        />
+        <input :value="advances ?? 0" type="number" class="char-num-input adv-input" placeholder="0"
+          @input="emit('update:advances', Number(($event.target as HTMLInputElement).value) || 0)" />
       </div>
 
       <!-- Total Score Display -->
-      <v-tooltip
-        v-if="penalty > 0 || penaltyTooltip"
-        :text="penaltyTooltip || `Base: ${current + penalty} (Penalized -${penalty})`"
-        location="bottom"
-        :open-on-focus="false"
-      >
+      <v-tooltip v-if="penalty > 0 || penaltyTooltip"
+        :text="penaltyTooltip || `Base: ${current + penalty} (Penalized -${penalty})`" location="bottom"
+        :open-on-focus="false">
         <template #activator="{ props: tProps }">
-          <div
-            v-if="useBadge"
-            v-bind="tProps"
-            class="stat-total-badge text-on-primary font-weight-black rounded py-1"
-            :class="penalty > 0 ? 'bg-error' : 'bg-primary'"
-          >
+          <div v-if="useBadge" v-bind="tProps" class="stat-total-badge text-on-primary font-weight-black rounded py-1"
+            :class="penalty > 0 ? 'bg-error' : 'bg-primary'">
             {{ current }}
             <span v-if="penalty > 0" class="text-caption font-weight-bold ml-1">
               (-{{ penalty }})
             </span>
           </div>
-          <div v-else v-bind="tProps" class="border-top pt-1 text-center font-weight-black text-body-2" :class="penalty > 0 ? 'text-error' : 'text-high-emphasis'">
+          <div v-else v-bind="tProps" class="border-top pt-1 text-center font-weight-black text-body-2"
+            :class="penalty > 0 ? 'text-error' : 'text-high-emphasis'">
             {{ current }} (-{{ penalty }})
           </div>
         </template>
       </v-tooltip>
 
       <template v-else>
-        <div
-          v-if="useBadge"
-          class="stat-total-badge text-on-primary font-weight-black rounded py-1 bg-primary"
-        >
+        <div v-if="useBadge" class="stat-total-badge text-on-primary font-weight-black rounded py-1 bg-primary">
           {{ current }}
         </div>
         <div v-else class="border-top pt-1 text-center font-weight-black text-body-2 text-high-emphasis">
@@ -155,6 +116,7 @@ const emit = defineEmits<{
 .char-card {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
+
 .char-card:hover {
   border-color: rgba(var(--v-theme-primary), 0.5) !important;
 }
@@ -171,6 +133,7 @@ const emit = defineEmits<{
   padding: 1px 2px;
   outline: none;
 }
+
 .char-num-input:focus {
   border-color: rgb(var(--v-theme-primary));
   box-shadow: 0 0 0 1px rgb(var(--v-theme-primary));
@@ -189,9 +152,9 @@ const emit = defineEmits<{
 }
 
 .char-important {
-  border-color: rgb(var(--v-theme-warning)) !important;
-  box-shadow: 0 0 8px rgba(var(--v-theme-warning), 0.35) !important;
-  background: rgba(var(--v-theme-warning), 0.05) !important;
+  border-color: rgb(var(--v-theme-warning));
+  box-shadow: 0 0 8px rgba(var(--v-theme-warning), 0.35);
+  background: rgba(var(--v-theme-warning), 0.05);
 }
 
 .important-toggle-btn {
@@ -203,7 +166,7 @@ const emit = defineEmits<{
 
 .char-card:hover :deep(.important-char-btn),
 :deep(.important-char-btn.active) {
-  opacity: 1 !important;
+  opacity: 1;
 }
 
 :deep(.important-char-btn:not(.active)) {
