@@ -31,21 +31,21 @@ const getLanguageTotal = (lang: Skill) => {
         <v-table density="compact" class="bg-transparent text-caption">
           <thead>
             <tr>
-              <th style="width: 200px;">Talent Name</th>
+              <th style="width: 220px;">Talent Name</th>
               <th>Description / Effect</th>
               <th class="text-right" style="width: 40px;">Action</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(talent, idx) in talents" :key="idx" :class="{ 'important-row': talent.important }">
-              <td style="width: 200px; max-width: 200px;">
-                <div class="d-flex align-center justify-space-between important-trigger-cell">
-                  <v-text-field v-model="talent.name" variant="plain" density="compact" hide-details placeholder="Talent Name" />
+              <td style="width: 220px; max-width: 220px;">
+                <div class="d-flex align-center important-trigger-cell">
                   <ImportantBtn
                     :active="talent.important"
-                    class="ml-1"
+                    class="mr-1 flex-shrink-0"
                     @toggle="talent.important = !talent.important"
                   />
+                  <v-text-field v-model="talent.name" variant="plain" density="compact" hide-details placeholder="Talent Name" />
                 </div>
               </td>
               <td>
@@ -81,13 +81,13 @@ const getLanguageTotal = (lang: Skill) => {
           <tbody>
             <tr v-for="(lang, idx) in languages" :key="idx" :class="{ 'important-row': lang.important }">
               <td>
-                <div class="d-flex align-center justify-space-between important-trigger-cell">
-                  <v-text-field v-model="lang.name" variant="plain" density="compact" hide-details placeholder="Language Name" />
+                <div class="d-flex align-center important-trigger-cell">
                   <ImportantBtn
                     :active="lang.important"
-                    class="ml-1"
+                    class="mr-1 flex-shrink-0"
                     @toggle="lang.important = !lang.important"
                   />
+                  <v-text-field v-model="lang.name" variant="plain" density="compact" hide-details placeholder="Language Name" />
                 </div>
               </td>
               <td style="max-width: 60px;"><v-text-field v-model.number="lang.adv" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" /></td>

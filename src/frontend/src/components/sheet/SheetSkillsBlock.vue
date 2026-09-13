@@ -38,17 +38,15 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
           <tbody>
             <tr v-for="skill in basicSkills" :key="skill.name" :class="{ 'important-row': skill.important }">
               <td>
-                <div class="d-flex align-center justify-space-between position-relative important-trigger-cell">
-                  <span class="font-weight-medium text-high-emphasis text-wrap mr-1">{{ skill.name }}</span>
-                  <ImportantBtn
-                    :active="skill.important"
-                    @toggle="skill.important = !skill.important"
-                  />
+                <div class="d-flex align-center position-relative important-trigger-cell mr-2">
+                  <ImportantBtn :active="skill.important" class="mr-1" @toggle="skill.important = !skill.important" />
+                  <span class="font-weight-medium text-high-emphasis text-wrap">{{ skill.name }}</span>
                 </div>
               </td>
               <td class="text-center text-primary font-weight-bold">{{ skill.characteristic }}</td>
               <td class="text-center">
-                <input v-model.number="skill.adv" type="number" class="skill-num-input font-weight-medium" placeholder="0" />
+                <input v-model.number="skill.adv" type="number" class="skill-num-input font-weight-medium"
+                  placeholder="0" />
               </td>
               <td class="text-right font-weight-black">
                 <v-tooltip text="Skill Total = Characteristic + Advances" location="right">
@@ -81,20 +79,19 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
           <tbody>
             <tr v-for="(skill, index) in advancedSkills" :key="index" :class="{ 'important-row': skill.important }">
               <td>
-                <div class="d-flex align-center justify-space-between position-relative important-trigger-cell">
-                  <input v-model="skill.name" type="text" class="skill-text-input font-weight-medium" placeholder="Skill Name" />
-                  <ImportantBtn
-                    :active="skill.important"
-                    class="ml-1"
-                    @toggle="skill.important = !skill.important"
-                  />
+                <div class="d-flex align-center position-relative important-trigger-cell">
+                  <ImportantBtn :active="skill.important" class="mr-1" @toggle="skill.important = !skill.important" />
+                  <input v-model="skill.name" type="text" class="skill-text-input font-weight-medium"
+                    placeholder="Skill Name" />
                 </div>
               </td>
               <td class="text-center">
-                <input v-model="skill.characteristic" type="text" class="skill-char-input font-weight-bold text-primary text-uppercase" placeholder="Int" />
+                <input v-model="skill.characteristic" type="text"
+                  class="skill-char-input font-weight-bold text-primary text-uppercase" placeholder="Int" />
               </td>
               <td class="text-center">
-                <input v-model.number="skill.adv" type="number" class="skill-num-input font-weight-medium" placeholder="0" />
+                <input v-model.number="skill.adv" type="number" class="skill-num-input font-weight-medium"
+                  placeholder="0" />
               </td>
               <td class="text-right font-weight-black">
                 <v-tooltip text="Skill Total = Characteristic + Advances" location="right">
@@ -163,15 +160,15 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
   display: inline-block;
   padding: 2px 8px;
   background: rgba(var(--v-theme-surface), 0.8);
-  color: rgb(var(--v-theme-on-surface)) !important;
+  color: rgb(var(--v-theme-on-surface));
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-radius: 4px;
   font-weight: 700;
 }
 
 .skill-table :deep(td) {
-  padding: 4px 8px !important;
-  height: auto !important;
+  padding: 4px 8px;
+  height: auto;
   white-space: normal;
 }
 </style>

@@ -57,24 +57,16 @@ function syncActiveCareer(c: CareerEntry) {
       No careers added. Click "+ Add Career" to add one.
     </div>
 
-    <div
-      v-for="(c, idx) in character.careers"
-      :key="idx"
-      class="career-row-card mb-3 pa-3 rounded-lg border"
-      :class="{ 'career-active': c.active }"
-    >
+    <div v-for="(c, idx) in character.careers" :key="idx" class="career-row-card mb-3 pa-3 rounded-lg border"
+      :class="{ 'career-active': c.active }">
       <!-- Career Header info: Active toggle, Class, Career, Status, Delete -->
       <div class="d-flex flex-wrap align-center gap-2 mb-2">
         <!-- Active / Important marker -->
-        <v-tooltip :text="c.active ? 'Current Active & Important Career' : 'Click to set as Active Career'" location="top" :open-on-focus="false">
+        <v-tooltip :text="c.active ? 'Current Active & Important Career' : 'Click to set as Active Career'"
+          location="top" :open-on-focus="false">
           <template #activator="{ props: tProps }">
-            <button
-              v-bind="tProps"
-              type="button"
-              class="career-active-btn d-flex align-center px-2 py-1 rounded"
-              :class="{ active: c.active }"
-              @click="setActiveCareer(idx)"
-            >
+            <button v-bind="tProps" type="button" class="career-active-btn d-flex align-center px-2 py-1 rounded"
+              :class="{ active: c.active }" @click="setActiveCareer(idx)">
               <v-icon :icon="c.active ? 'mdi-star' : 'mdi-star-outline'" size="small" class="mr-1" />
               <span class="text-caption font-weight-bold">{{ c.active ? 'Active' : 'Inactive' }}</span>
             </button>
@@ -82,37 +74,16 @@ function syncActiveCareer(c: CareerEntry) {
         </v-tooltip>
 
         <div style="width: 140px;">
-          <v-text-field
-            v-model="c.class"
-            label="Class"
-            variant="outlined"
-            density="compact"
-            hide-details
-            placeholder="Academic..."
-            @update:model-value="c.active && syncActiveCareer(c)"
-          />
+          <v-text-field v-model="c.class" label="Class" variant="outlined" density="compact" hide-details
+            placeholder="Academic..." @update:model-value="c.active && syncActiveCareer(c)" />
         </div>
         <div class="flex-grow-1" style="min-width: 150px;">
-          <v-text-field
-            v-model="c.career"
-            label="Career"
-            variant="outlined"
-            density="compact"
-            hide-details
-            placeholder="Wizard..."
-            @update:model-value="c.active && syncActiveCareer(c)"
-          />
+          <v-text-field v-model="c.career" label="Career" variant="outlined" density="compact" hide-details
+            placeholder="Wizard..." @update:model-value="c.active && syncActiveCareer(c)" />
         </div>
         <div style="width: 150px;">
-          <v-text-field
-            v-model="c.status"
-            label="Status"
-            variant="outlined"
-            density="compact"
-            hide-details
-            placeholder="Silver 3"
-            @update:model-value="c.active && syncActiveCareer(c)"
-          />
+          <v-text-field v-model="c.status" label="Status" variant="outlined" density="compact" hide-details
+            placeholder="Silver 3" @update:model-value="c.active && syncActiveCareer(c)" />
         </div>
 
         <DeleteRowBtn @delete="removeCareer(idx)" />
@@ -135,14 +106,17 @@ function syncActiveCareer(c: CareerEntry) {
 </template>
 
 <style scoped>
-.gap-2 { gap: 8px; }
+.gap-2 {
+  gap: 8px;
+}
 
 .career-row-card {
   background: rgba(var(--v-theme-surface), 0.7);
   transition: all 0.2s ease;
 }
+
 .career-row-card.career-active {
-  border-color: rgb(var(--v-theme-primary)) !important;
+  border-color: rgb(var(--v-theme-primary));
   box-shadow: 0 0 10px rgba(var(--v-theme-primary), 0.2);
 }
 
@@ -153,10 +127,12 @@ function syncActiveCareer(c: CareerEntry) {
   cursor: pointer;
   transition: all 0.2s ease;
 }
+
 .career-active-btn:hover {
   border-color: rgb(var(--v-theme-primary));
   color: rgb(var(--v-theme-primary));
 }
+
 .career-active-btn.active {
   background: rgba(var(--v-theme-primary), 0.15);
   border-color: rgb(var(--v-theme-primary));

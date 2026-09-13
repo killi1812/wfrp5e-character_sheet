@@ -30,11 +30,16 @@ const emit = defineEmits<{
   (e: 'removeTrapping', index: number): void
 }>()
 
-// Track open/collapsed state of bags
+// Track open/collapsed state of bags (default to true/open)
 const openBags = ref<Record<string, boolean>>({})
 
+function isBagOpen(bag: TrappingItem, idx: number): boolean {
+  const key = bag.id || String(idx)
+  return openBags.value[key] !== false
+}
+
 function toggleBag(bagId: string) {
-  openBags.value[bagId] = !openBags.value[bagId]
+  openBags.value[bagId] = openBags.value[bagId] === false ? true : false
 }
 
 function getContainedEnc(bag: TrappingItem): number {
@@ -45,90 +50,19 @@ function getContainedEnc(bag: TrappingItem): number {
   }, 0)
 }
 
-function addItemToBag(bag: TrappingItem) {
+function addItemToBag(bag: TrappingItem, idx?: number) {
   if (!bag.containedTrappings) {
     bag.containedTrappings = []
   }
   bag.containedTrappings.push(NEW_ITEM_TEMPLATES.trapping())
-  if (bag.id) {
-    openBags.value[bag.id] = true
+  const key = bag.id || (idx !== undefined ? String(idx) : '')
+  if (key) {
+    openBags.value[key] = true
   }
 }
 
 function removeItemFromBag(bag: TrappingItem, index: number) {
   bag.containedTrappings?.splice(index, 1)
-}
-
-// Drag & Drop Handling
-const draggedItemId = ref<string | null>(null)
-const draggedFromBagId = ref<string | null>(null)
-
-function onDragStart(e: DragEvent, item: TrappingItem, fromBagId: string | null = null) {
-  draggedItemId.value = item.id || null
-  draggedFromBagId.value = fromBagId
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, fromBagId }))
-  }
-}
-
-function onDropIntoBag(e: DragEvent, targetBag: TrappingItem) {
-  e.preventDefault()
-  if (!targetBag.containedTrappings) {
-    targetBag.containedTrappings = []
-  }
-
-  const itemId = draggedItemId.value
-  const fromBagId = draggedFromBagId.value
-  if (!itemId || targetBag.id === itemId) return
-
-  let foundItem: TrappingItem | null = null
-
-  // Remove from source
-  if (fromBagId) {
-    const sourceBag = props.trappings.find((t) => t.id === fromBagId)
-    if (sourceBag && sourceBag.containedTrappings) {
-      const idx = sourceBag.containedTrappings.findIndex((t) => t.id === itemId)
-      if (idx >= 0) {
-        foundItem = sourceBag.containedTrappings.splice(idx, 1)[0]
-      }
-    }
-  } else {
-    const idx = props.trappings.findIndex((t) => t.id === itemId)
-    if (idx >= 0) {
-      foundItem = props.trappings.splice(idx, 1)[0]
-    }
-  }
-
-  // Add to target bag
-  if (foundItem) {
-    targetBag.containedTrappings.push(foundItem)
-    if (targetBag.id) {
-      openBags.value[targetBag.id] = true
-    }
-  }
-
-  draggedItemId.value = null
-  draggedFromBagId.value = null
-}
-
-function onDropToRoot(e: DragEvent) {
-  e.preventDefault()
-  const itemId = draggedItemId.value
-  const fromBagId = draggedFromBagId.value
-  if (!itemId || !fromBagId) return
-
-  const sourceBag = props.trappings.find((t) => t.id === fromBagId)
-  if (sourceBag && sourceBag.containedTrappings) {
-    const idx = sourceBag.containedTrappings.findIndex((t) => t.id === itemId)
-    if (idx >= 0) {
-      const item = sourceBag.containedTrappings.splice(idx, 1)[0]
-      props.trappings.push(item)
-    }
-  }
-
-  draggedItemId.value = null
-  draggedFromBagId.value = null
 }
 
 const totalCoins = computed(() => (Number(props.wealth.gc) || 0) + (Number(props.wealth.ss) || 0) + (Number(props.wealth.bp) || 0))
@@ -216,12 +150,10 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
               </div>
             </div>
           </v-tooltip>
-
-          <span class="text-caption text-medium-emphasis">Drag items to move into bags</span>
         </div>
 
-        <!-- Root Trappings Drop Zone -->
-        <div class="root-trappings-container mb-3" @dragover.prevent @drop="onDropToRoot">
+        <!-- Root Trappings Table -->
+        <div class="root-trappings-container mb-3">
           <v-table density="compact" class="bg-transparent text-caption">
             <thead>
               <tr>
@@ -230,17 +162,14 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
                 <th class="text-center" style="width: 60px;">Enc</th>
                 <th class="text-center" style="width: 70px;">Qty/Size</th>
                 <th class="text-center" style="width: 45px;">Worn</th>
-                <th class="text-right" style="width: 40px;">Action</th>
+                <th class="text-right" style="width: 70px;">Action</th>
               </tr>
             </thead>
             <tbody>
               <template v-for="(t, idx) in trappings" :key="t.id || idx">
                 <!-- REGULAR ITEM ROW -->
-                <tr v-if="!t.isBag" draggable="true" class="trapping-item-row"
-                  @dragstart="onDragStart($event, t, null)">
-                  <td class="text-center pa-0 drag-handle" style="cursor: grab;">
-                    <v-icon icon="mdi-drag-vertical" size="small" color="medium-emphasis" />
-                  </td>
+                <tr v-if="!t.isBag" class="trapping-item-row">
+                  <td class="text-center pa-0"></td>
                   <td>
                     <v-text-field v-model="t.name" variant="plain" density="compact" hide-details
                       placeholder="Item Name" />
@@ -262,15 +191,14 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
                 </tr>
 
                 <!-- BAG / CONTAINER ROW -->
-                <tr v-else class="bag-row bg-surface-variant" @dragover.prevent @drop.stop="onDropIntoBag($event, t)">
+                <tr v-else class="bag-row bg-surface-variant">
                   <td class="text-center pa-0">
                     <v-btn icon size="x-small" variant="text" @click="toggleBag(t.id || String(idx))">
-                      <v-icon :icon="openBags[t.id || String(idx)] ? 'mdi-chevron-down' : 'mdi-chevron-right'" />
+                      <v-icon :icon="isBagOpen(t, idx) ? 'mdi-chevron-down' : 'mdi-chevron-right'" />
                     </v-btn>
                   </td>
                   <td>
                     <div class="d-flex align-center">
-                      <v-icon icon="mdi-bag-personal" size="small" color="secondary" class="mr-1" />
                       <v-text-field v-model="t.name" variant="plain" density="compact" hide-details
                         placeholder="Bag Name" class="font-weight-bold" />
                     </div>
@@ -291,57 +219,50 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
                   <td class="text-center">
                     <v-checkbox-btn v-model="t.worn" density="compact" hide-details color="primary" />
                   </td>
-                  <td class="text-right">
+                  <td class="text-right text-no-wrap">
                     <DeleteRowBtn @delete="emit('removeTrapping', idx)" />
                   </td>
                 </tr>
 
                 <!-- BAG CONTENTS ACCORDION SECTION -->
-                <BagContainerRow
-                  :bag="t"
-                  :is-open="Boolean(openBags[t.id || String(idx)])"
-                  @add-item="addItemToBag(t)"
-                  @remove-item="removeItemFromBag(t, $event)"
-                  @drop-into-bag="onDropIntoBag($event, t)"
-                  @drag-start-item="onDragStart($event.event, $event.item, t.id || null)"
-                />
-</template>
-</tbody>
-</v-table>
-</div>
-
-<!-- Wealth moved down with bigger font and coins enc count -->
-<div class="pa-3 bg-surface-variant rounded-lg border">
-  <div class="d-flex justify-space-between align-center mb-2">
-    <span class="text-caption font-weight-bold text-primary">Money / Wealth</span>
-    <span class="text-caption text-medium-emphasis">
-      Total: {{ totalCoins }} coins (+{{ coinsEnc }} Enc, 1 per 200 coins)
-    </span>
-  </div>
-  <v-row dense>
-    <v-col cols="4">
-      <div class="wealth-box text-center pa-2 rounded border bg-surface">
-        <div class="text-caption text-medium-emphasis font-weight-bold mb-1">GC (Gold)</div>
-        <input v-model.number="wealth.gc" type="number" class="wealth-input font-weight-bold" placeholder="0" />
-      </div>
-    </v-col>
-    <v-col cols="4">
-      <div class="wealth-box text-center pa-2 rounded border bg-surface">
-        <div class="text-caption text-medium-emphasis font-weight-bold mb-1">SS (Silver)</div>
-        <input v-model.number="wealth.ss" type="number" class="wealth-input font-weight-bold" placeholder="0" />
-      </div>
-    </v-col>
-    <v-col cols="4">
-      <div class="wealth-box text-center pa-2 rounded border bg-surface">
-        <div class="text-caption text-medium-emphasis font-weight-bold mb-1">BP (Brass)</div>
-        <input v-model.number="wealth.bp" type="number" class="wealth-input font-weight-bold" placeholder="0" />
-      </div>
+                <BagContainerRow :bag="t" :is-open="isBagOpen(t, idx)" @add-item="addItemToBag(t, idx)"
+                  @remove-item="removeItemFromBag(t, $event)" />
+              </template>
+            </tbody>
+          </v-table>
+        </div>
+        <!-- Wealth moved down with bigger font and coins enc count -->
+        <div class="pa-3 bg-surface-variant rounded-lg border">
+          <div class="d-flex justify-space-between align-center mb-2">
+            <span class="text-caption font-weight-bold text-primary">Money / Wealth</span>
+            <span class="text-caption text-medium-emphasis">
+              Total: {{ totalCoins }} coins (+{{ coinsEnc }} Enc, 1 per 200 coins)
+            </span>
+          </div>
+          <v-row dense>
+            <v-col cols="4">
+              <div class="wealth-box text-center pa-2 rounded border bg-surface">
+                <div class="text-caption text-medium-emphasis font-weight-bold mb-1">GC (Gold)</div>
+                <input v-model.number="wealth.gc" type="number" class="wealth-input font-weight-bold" placeholder="0" />
+              </div>
+            </v-col>
+            <v-col cols="4">
+              <div class="wealth-box text-center pa-2 rounded border bg-surface">
+                <div class="text-caption text-medium-emphasis font-weight-bold mb-1">SS (Silver)</div>
+                <input v-model.number="wealth.ss" type="number" class="wealth-input font-weight-bold" placeholder="0" />
+              </div>
+            </v-col>
+            <v-col cols="4">
+              <div class="wealth-box text-center pa-2 rounded border bg-surface">
+                <div class="text-caption text-medium-emphasis font-weight-bold mb-1">BP (Brass)</div>
+                <input v-model.number="wealth.bp" type="number" class="wealth-input font-weight-bold" placeholder="0" />
+              </div>
+            </v-col>
+          </v-row>
+        </div>
+      </SectionCard>
     </v-col>
   </v-row>
-</div>
-</SectionCard>
-</v-col>
-</v-row>
 </template>
 
 <style scoped>
@@ -354,7 +275,7 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
 }
 
 .wealth-box:focus-within {
-  border-color: rgb(var(--v-theme-primary)) !important;
+  border-color: rgb(var(--v-theme-primary));
 }
 
 .wealth-input {
@@ -365,10 +286,6 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
   background: transparent;
   outline: none;
   color: currentColor;
-}
-
-.drag-handle {
-  cursor: grab;
 }
 
 .trapping-item-row:hover {

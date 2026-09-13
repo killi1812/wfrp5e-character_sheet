@@ -31,7 +31,7 @@ input[type='number'] {
 
 /* Important row highlight shared across tables */
 .important-row {
-  background-color: rgba(var(--v-theme-primary), 0.12) !important;
+  background-color: rgba(var(--v-theme-primary), 0.12);
 }
 
 /* Hover-reveal for ImportantBtn icon within table cells */

@@ -42,32 +42,32 @@ const emit = defineEmits<{
           <tbody>
             <tr v-for="(spell, idx) in character.spells" :key="idx">
               <td style="width: 200px; max-width: 200px;">
-                <v-text-field v-model="spell.name" variant="plain" density="compact" hide-details placeholder="Spell / Prayer" />
+                <v-text-field v-model="spell.name" variant="plain" density="compact" hide-details
+                  placeholder="Spell / Prayer" />
               </td>
               <td style="width: 45px; max-width: 45px;">
-                <v-text-field v-model.number="spell.cn" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" />
+                <v-text-field v-model.number="spell.cn" type="number" variant="plain" density="compact" hide-details
+                  class="text-center" placeholder="0" />
               </td>
               <td style="width: 100px; max-width: 100px;">
-                <v-text-field v-model="spell.range" variant="plain" density="compact" hide-details placeholder="12 yd" />
+                <v-text-field v-model="spell.range" variant="plain" density="compact" hide-details
+                  placeholder="12 yd" />
               </td>
               <td style="width: 100px; max-width: 100px;">
-                <v-text-field v-model="spell.target" variant="plain" density="compact" hide-details placeholder="1 Target" />
+                <v-text-field v-model="spell.target" variant="plain" density="compact" hide-details
+                  placeholder="1 Target" />
               </td>
               <td style="width: 100px; max-width: 100px;">
-                <v-text-field v-model="spell.duration" variant="plain" density="compact" hide-details placeholder="Instant" />
+                <v-text-field v-model="spell.duration" variant="plain" density="compact" hide-details
+                  placeholder="Instant" />
               </td>
               <td>
-                <v-textarea
-                  v-model="spell.description"
-                  variant="plain"
-                  density="compact"
-                  rows="1"
-                  auto-grow
-                  hide-details
-                  placeholder="Effect and rules description..."
-                />
+                <v-textarea v-model="spell.description" variant="plain" density="compact" rows="1" auto-grow
+                  hide-details placeholder="Effect and rules description..." />
               </td>
-              <td class="text-right"><DeleteRowBtn @delete="emit('removeSpell', idx)" /></td>
+              <td class="text-right">
+                <DeleteRowBtn @delete="emit('removeSpell', idx)" />
+              </td>
             </tr>
           </tbody>
         </v-table>
@@ -79,10 +79,12 @@ const emit = defineEmits<{
       <SectionCard title="Corruption & Mutations" full-height>
         <v-row dense class="mb-3">
           <v-col cols="6">
-            <v-text-field v-model.number="character.corruption.current" label="Current Corruption" type="number" variant="outlined" density="compact" hide-details placeholder="0" />
+            <v-text-field v-model.number="character.corruption.current" label="Current Corruption" type="number"
+              variant="outlined" density="compact" hide-details placeholder="0" />
           </v-col>
           <v-col cols="6">
-            <v-text-field v-model.number="character.corruption.max" label="Max Threshold" type="number" variant="outlined" density="compact" hide-details placeholder="0" />
+            <v-text-field v-model.number="character.corruption.max" label="Max Threshold" type="number"
+              variant="outlined" density="compact" hide-details placeholder="0" />
           </v-col>
         </v-row>
 
@@ -91,30 +93,20 @@ const emit = defineEmits<{
           <AddBtn label="Add Mutation" @click="emit('addMutation')" />
         </div>
 
-        <div v-if="character.mutations.length === 0" class="text-caption text-medium-emphasis font-italic py-2 text-center">
+        <div v-if="character.mutations.length === 0"
+          class="text-caption text-medium-emphasis font-italic py-2 text-center">
           No mutations recorded. Click "+ Add Mutation" to add one.
         </div>
 
-        <div v-for="(mut, idx) in character.mutations" :key="idx" class="mutation-card pa-2 rounded mb-2 bg-surface-variant border">
+        <div v-for="(mut, idx) in character.mutations" :key="idx"
+          class="mutation-card pa-2 rounded mb-2 bg-surface-variant border">
           <div class="d-flex justify-space-between align-center mb-1">
-            <input
-              v-model="mut.name"
-              type="text"
-              class="mutation-input font-weight-bold text-caption"
-              placeholder="Mutation Name"
-            />
+            <input v-model="mut.name" type="text" class="mutation-input font-weight-bold text-caption"
+              placeholder="Mutation Name" />
             <DeleteRowBtn @delete="emit('removeMutation', idx)" />
           </div>
-          <v-textarea
-            v-model="mut.effect"
-            variant="plain"
-            density="compact"
-            rows="1"
-            auto-grow
-            hide-details
-            placeholder="Effect / Description"
-            class="text-caption text-medium-emphasis"
-          />
+          <v-textarea v-model="mut.effect" variant="plain" density="compact" rows="1" auto-grow hide-details
+            placeholder="Effect / Description" class="text-caption text-medium-emphasis" />
         </div>
       </SectionCard>
     </v-col>
@@ -125,8 +117,9 @@ const emit = defineEmits<{
 .mutation-card {
   transition: border-color 0.2s;
 }
+
 .mutation-card:focus-within {
-  border-color: rgb(var(--v-theme-primary)) !important;
+  border-color: rgb(var(--v-theme-primary));
 }
 
 .mutation-input {

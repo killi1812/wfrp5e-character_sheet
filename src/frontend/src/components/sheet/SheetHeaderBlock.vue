@@ -21,23 +21,21 @@ defineEmits<{
           <TooltipField v-model="character.name" label="Name" tooltip="Character Name" field-class="font-weight-bold" />
         </v-col>
         <v-col cols="12" sm="6" md="4">
-          <v-text-field v-model="character.species" label="Species" variant="outlined" density="compact" hide-details placeholder="Human, Elf, Dwarf..." />
+          <v-text-field v-model="character.species" label="Species" variant="outlined" density="compact" hide-details
+            placeholder="Human, Elf, Dwarf..." />
         </v-col>
         <v-col cols="12" sm="6" md="4">
-          <v-text-field v-model="character.appearance" label="Appearance" variant="outlined" density="compact" hide-details placeholder="Height, build, features..." />
+          <v-text-field v-model="character.appearance" label="Appearance" variant="outlined" density="compact"
+            hide-details placeholder="Height, build, features..." />
         </v-col>
       </v-row>
     </v-card>
 
     <!-- Actions Block (20% on desktop) -->
-    <v-card color="surface" elevation="2" class="pa-3 rounded-lg border d-flex flex-column justify-center align-center actions-card">
+    <v-card color="surface" elevation="2"
+      class="pa-3 rounded-lg border d-flex flex-column justify-center align-center actions-card">
       <div class="d-flex align-center justify-space-between w-100 mb-2">
-        <v-chip
-          :color="isDirty ? 'warning' : 'success'"
-          size="small"
-          variant="tonal"
-          class="font-weight-bold"
-        >
+        <v-chip :color="isDirty ? 'warning' : 'success'" size="small" variant="tonal" class="font-weight-bold">
           <v-icon start :icon="isDirty ? 'mdi-alert-circle-outline' : 'mdi-check-circle-outline'" size="small" />
           {{ isDirty ? 'Not saved' : 'Saved' }}
         </v-chip>
@@ -45,43 +43,31 @@ defineEmits<{
         <!-- Kebab Menu Trigger -->
         <v-tooltip text="Sheet Menu & Settings" location="top" :open-on-focus="false">
           <template #activator="{ props: tProps }">
-            <v-btn
-              v-bind="tProps"
-              icon="mdi-dots-vertical"
-              size="small"
-              color="primary"
-              variant="text"
-              @click="$emit('openMenu')"
-            />
+            <v-btn v-bind="tProps" icon="mdi-dots-vertical" size="small" color="primary" variant="text"
+              @click="$emit('openMenu')" />
           </template>
         </v-tooltip>
       </div>
 
       <!-- Quick Toggles (Spells & Mount) -->
       <div class="d-flex align-center justify-space-around w-100 pt-1 border-t">
-        <v-tooltip :text="character.spellsHidden ? 'Show Spells & Prayers' : 'Hide Spells & Prayers'" location="top" :open-on-focus="false">
+        <v-tooltip :text="character.spellsHidden ? 'Show Spells & Prayers' : 'Hide Spells & Prayers'" location="top"
+          :open-on-focus="false">
           <template #activator="{ props: tProps }">
-            <v-btn
-              v-bind="tProps"
-              :icon="character.spellsHidden ? 'mdi-auto-fix' : 'mdi-auto-fix'"
-              size="small"
+            <v-btn v-bind="tProps" :icon="character.spellsHidden ? 'mdi-auto-fix' : 'mdi-auto-fix'" size="small"
               :color="character.spellsHidden ? 'default' : 'primary'"
               :variant="character.spellsHidden ? 'outlined' : 'tonal'"
-              @click="character.spellsHidden = !character.spellsHidden"
-            />
+              @click="character.spellsHidden = !character.spellsHidden" />
           </template>
         </v-tooltip>
 
-        <v-tooltip :text="character.mountHidden ? 'Show Mount Section' : 'Hide Mount Section'" location="top" :open-on-focus="false">
+        <v-tooltip :text="character.mountHidden ? 'Show Mount Section' : 'Hide Mount Section'" location="top"
+          :open-on-focus="false">
           <template #activator="{ props: tProps }">
-            <v-btn
-              v-bind="tProps"
-              icon="mdi-horse"
-              size="small"
+            <v-btn disabled v-bind="tProps" icon="mdi-horse" size="small"
               :color="character.mountHidden ? 'default' : 'primary'"
               :variant="character.mountHidden ? 'outlined' : 'tonal'"
-              @click="character.mountHidden = !character.mountHidden"
-            />
+              @click="character.mountHidden = !character.mountHidden" />
           </template>
         </v-tooltip>
       </div>
@@ -111,7 +97,9 @@ defineEmits<{
 }
 
 @media (max-width: 960px) {
-  .header-card, .actions-card {
+
+  .header-card,
+  .actions-card {
     flex: 0 0 100%;
     max-width: 100%;
   }

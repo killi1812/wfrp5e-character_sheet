@@ -1,4 +1,8 @@
 <script setup lang="ts">
+defineOptions({
+  inheritAttrs: false,
+})
+
 const props = withDefaults(
   defineProps<{
     active?: boolean
@@ -35,14 +39,29 @@ function handleClick(event: MouseEvent) {
   <v-tooltip :text="active ? tooltipActive : tooltipInactive" location="top" :open-on-focus="false">
     <template #activator="{ props: tProps }">
       <!-- Char style '!' button (e.g. Characteristics header) -->
-      <button v-if="asChar" v-bind="tProps" type="button" class="important-char-btn" :class="{ active }"
-        @click="handleClick">
+      <button
+        v-if="asChar"
+        v-bind="{ ...tProps, ...$attrs }"
+        type="button"
+        class="important-char-btn"
+        :class="[{ active }, $attrs.class]"
+        @click="handleClick"
+      >
         !
       </button>
 
       <!-- Icon button (e.g. Skills, Talents, Languages) -->
-      <v-btn v-else v-bind="tProps" icon :size="size" variant="text" density="compact" class="important-icon-btn"
-        :class="{ active }" @click="handleClick">
+      <v-btn
+        v-else
+        v-bind="{ ...tProps, ...$attrs }"
+        icon
+        :size="size"
+        variant="text"
+        density="compact"
+        class="important-icon-btn"
+        :class="[{ active }, $attrs.class]"
+        @click="handleClick"
+      >
         <v-icon :size="iconSize">
           {{ active ? 'mdi-alert-circle' : 'mdi-alert-circle-outline' }}
         </v-icon>
@@ -87,6 +106,7 @@ function handleClick(event: MouseEvent) {
 
 /* Icon style */
 .important-icon-btn {
+  flex-shrink: 0;
   opacity: 0.35;
   transition: opacity 0.2s ease, color 0.2s ease;
   color: rgb(var(--v-theme-on-surface));

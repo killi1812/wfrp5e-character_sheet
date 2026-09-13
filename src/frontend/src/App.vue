@@ -144,15 +144,8 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
     <div v-if="currentPage === 'admin'" class="kebab-fixed-pos">
       <v-tooltip text="System Options & Settings" location="left">
         <template #activator="{ props: tooltipProps }">
-          <v-btn
-            v-bind="tooltipProps"
-            icon="mdi-dots-vertical"
-            color="primary"
-            elevation="8"
-            size="large"
-            class="kebab-fab"
-            @click="showKebabOverlay = true"
-          />
+          <v-btn v-bind="tooltipProps" icon="mdi-dots-vertical" color="primary" elevation="8" size="large"
+            class="kebab-fab" @click="showKebabOverlay = true" />
         </template>
       </v-tooltip>
     </div>
@@ -169,7 +162,8 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
         </div>
 
         <!-- User Status Banner -->
-        <div v-if="currentUser" class="pa-4 bg-surface-variant rounded-lg mb-4 d-flex align-center justify-space-between border">
+        <div v-if="currentUser"
+          class="pa-4 bg-surface-variant rounded-lg mb-4 d-flex align-center justify-space-between border">
           <div>
             <div class="text-subtitle-1 font-weight-bold text-on-surface-variant">{{ currentUser.username }}</div>
             <v-chip size="x-small" :color="isAdmin ? 'secondary' : 'info'" class="mt-1" variant="flat">
@@ -182,97 +176,54 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
         </div>
 
         <v-list class="bg-transparent pa-0">
-          <v-list-item
-            :prepend-icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+          <v-list-item :prepend-icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
             :title="isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'"
-            class="mb-2 rounded-lg bg-surface-variant border"
-            @click="toggleTheme"
-          />
+            class="mb-2 rounded-lg bg-surface-variant border" @click="toggleTheme" />
 
           <!-- Admin Panel Button (If logged in as Admin) -->
-          <v-list-item
-            v-if="isAdmin"
-            prepend-icon="mdi-shield-crown"
-            title="Admin Control Panel"
-            subtitle="User & Database Management"
-            color="secondary"
-            class="mb-2 rounded-lg bg-secondary text-on-secondary font-weight-bold"
-            @click="navigateTo('admin')"
-          />
+          <v-list-item v-if="isAdmin" prepend-icon="mdi-shield-crown" title="Admin Control Panel"
+            subtitle="User & Database Management" color="secondary"
+            class="mb-2 rounded-lg bg-secondary text-on-secondary font-weight-bold" @click="navigateTo('admin')" />
 
           <!-- Sheet Actions (when viewing character sheet) -->
           <template v-if="currentPage === 'sheet'">
             <v-divider class="my-3" />
             <div class="text-caption font-weight-bold text-primary mb-2 text-uppercase">Sheet Actions</div>
 
-            <v-list-item
-              prepend-icon="mdi-content-save"
-              title="Save Character Sheet"
-              subtitle="Save current changes (Ctrl+S)"
-              class="mb-2 rounded-lg bg-surface-variant border"
-              @click="sheetRef?.saveSheet(); showKebabOverlay = false"
-            />
+            <v-list-item prepend-icon="mdi-content-save" title="Save Character Sheet"
+              subtitle="Save current changes (Ctrl+S)" class="mb-2 rounded-lg bg-surface-variant border"
+              @click="sheetRef?.saveSheet(); showKebabOverlay = false" />
 
-            <v-list-item
-              prepend-icon="mdi-download"
-              title="Download Data (JSON)"
-              subtitle="Export as [date]-[character-name].json"
-              class="mb-2 rounded-lg bg-surface-variant border"
-              @click="sheetRef?.exportJson(); showKebabOverlay = false"
-            />
+            <v-list-item prepend-icon="mdi-download" title="Download Data (JSON)"
+              subtitle="Export as [date]-[character-name].json" class="mb-2 rounded-lg bg-surface-variant border"
+              @click="sheetRef?.exportJson(); showKebabOverlay = false" />
 
-            <v-list-item
-              prepend-icon="mdi-upload"
-              title="Upload Data (JSON)"
-              subtitle="Import character sheet from JSON file"
-              class="mb-2 rounded-lg bg-surface-variant border"
-              @click="fileInputRef?.click(); showKebabOverlay = false"
-            />
+            <v-list-item prepend-icon="mdi-upload" title="Upload Data (JSON)"
+              subtitle="Import character sheet from JSON file" class="mb-2 rounded-lg bg-surface-variant border"
+              @click="fileInputRef?.click(); showKebabOverlay = false" />
 
-            <v-list-item
-              prepend-icon="mdi-file-plus-outline"
-              title="New Blank Sheet"
-              subtitle="Start with a blank sheet"
-              class="mb-2 rounded-lg bg-surface-variant border"
-              @click="sheetRef?.newBlankSheet(); showKebabOverlay = false"
-            />
+            <v-list-item prepend-icon="mdi-file-plus-outline" title="New Blank Sheet"
+              subtitle="Start with a blank sheet" class="mb-2 rounded-lg bg-surface-variant border"
+              @click="sheetRef?.newBlankSheet(); showKebabOverlay = false" />
 
-            <v-list-item
-              prepend-icon="mdi-database-import"
-              title="Load Demo Character"
-              subtitle="Gottfried von Altdorf (Wizard)"
-              class="mb-2 rounded-lg bg-surface-variant border"
-              @click="sheetRef?.loadMockData(); showKebabOverlay = false"
-            />
+            <v-list-item prepend-icon="mdi-database-import" title="Load Demo Character"
+              subtitle="Gottfried von Altdorf (Wizard)" class="mb-2 rounded-lg bg-surface-variant border"
+              @click="sheetRef?.loadMockData(); showKebabOverlay = false" />
           </template>
 
           <!-- Auth Button -->
-          <v-list-item
-            v-if="!currentUser"
-            prepend-icon="mdi-login"
-            title="Sign In / Register"
+          <v-list-item v-if="!currentUser" prepend-icon="mdi-login" title="Sign In / Register"
             class="mt-4 rounded-lg bg-primary text-on-primary font-weight-bold"
-            @click="showKebabOverlay = false; showAuthDialog = true"
-          />
-          <v-list-item
-            v-else
-            prepend-icon="mdi-logout"
-            title="Log Out"
+            @click="showKebabOverlay = false; showAuthDialog = true" />
+          <v-list-item v-else prepend-icon="mdi-logout" title="Log Out"
             class="mt-4 rounded-lg bg-error text-on-error font-weight-bold"
-            @click="logout(); showKebabOverlay = false"
-          />
+            @click="logout(); showKebabOverlay = false" />
         </v-list>
       </v-card>
     </v-dialog>
 
     <!-- Hidden File Input for JSON Upload -->
-    <input
-      ref="fileInputRef"
-      type="file"
-      accept=".json,application/json"
-      class="d-none"
-      @change="handleFileUpload"
-    />
+    <input ref="fileInputRef" type="file" accept=".json,application/json" class="d-none" @change="handleFileUpload" />
 
     <!-- PAGE CONDITIONAL RENDERING -->
     <template v-if="currentPage === 'sheet'">
@@ -286,17 +237,12 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
     <!-- Dialogs -->
     <AuthDialog v-model="showAuthDialog" @login-success="onLoginSuccess" />
-    <GuestUploadDialog
-      v-model="showGuestUploadDialog"
-      :character-name="guestCharacterName"
-      @confirm-upload="uploadGuestSheet"
-    />
+    <GuestUploadDialog v-model="showGuestUploadDialog" :character-name="guestCharacterName"
+      @confirm-upload="uploadGuestSheet" />
   </v-app>
 </template>
 
 <style>
-/* Clean Theme-Aware CSS Styles without any !important hacks */
-
 /* Hide HTML & Chrome/Edge/Safari/Firefox number spinner arrows */
 input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {

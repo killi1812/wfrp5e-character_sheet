@@ -43,7 +43,12 @@ const emit = defineEmits<{
 <template>
   <v-card color="surface-variant" variant="outlined" class="pa-2 rounded text-center char-card position-relative"
     :class="{ 'char-important': isImportant }">
-    <!-- Header with Code, Tooltip, and Actions (Important or Nullable Toggle) -->
+    <!-- Important toggle button in top right corner of the box (!) -->
+    <div v-if="showImportant" class="important-toggle-btn">
+      <ImportantBtn as-char :active="isImportant" @toggle="emit('toggleImportant')" />
+    </div>
+
+    <!-- Header with Code, Tooltip, and Actions (Nullable Toggle) -->
     <div class="char-header position-relative border-bottom pb-1 mb-2 d-flex align-center"
       :class="nullable ? 'justify-space-between' : 'justify-center'">
       <v-tooltip :text="name ? `${name}${hint ? ' — ' + hint : ''}` : code" location="top" :open-on-focus="false">
@@ -54,10 +59,11 @@ const emit = defineEmits<{
         </template>
       </v-tooltip>
 
-      <!-- Important toggle button (!) -->
-      <ImportantBtn v-if="showImportant" as-char :active="isImportant" class="important-toggle-btn"
-        @toggle="emit('toggleImportant')" />
-
+      <!-- Nullable toggle (+ / x for mount stats) -->
+      <v-btn v-if="nullable" icon size="16" variant="plain" class="opacity-60"
+        :title="isNull ? 'Enable stat' : 'Clear to None'" @click="emit('toggleNullable')">
+        <v-icon size="12">{{ isNull ? 'mdi-plus' : 'mdi-close' }}</v-icon>
+      </v-btn>
     </div>
 
     <!-- Disabled / Null State -->
@@ -114,11 +120,12 @@ const emit = defineEmits<{
 
 <style scoped>
 .char-card {
+  position: relative;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .char-card:hover {
-  border-color: rgba(var(--v-theme-primary), 0.5) !important;
+  border-color: rgba(var(--v-theme-primary), 0.5);
 }
 
 .char-num-input {
@@ -159,17 +166,25 @@ const emit = defineEmits<{
 
 .important-toggle-btn {
   position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.char-card :deep(.important-char-btn) {
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.char-card :deep(.important-char-btn:not(.active)) {
+  opacity: 0.35;
 }
 
 .char-card:hover :deep(.important-char-btn),
-:deep(.important-char-btn.active) {
+.char-card :deep(.important-char-btn:hover),
+.char-card :deep(.important-char-btn.active) {
   opacity: 1;
-}
-
-:deep(.important-char-btn:not(.active)) {
-  opacity: 0;
 }
 </style>
