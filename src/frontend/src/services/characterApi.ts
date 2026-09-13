@@ -539,9 +539,11 @@ class CharacterApiService {
     }
 
     const serializeTrapping = (t: TrappingItem): any => ({
+      id: t.id || undefined,
       name: t.name || '',
       category: t.category || '',
       enc: Number(t.enc) || 0,
+      qty: Number(t.qty) || 1,
       description: t.desc || '',
       worn: Boolean(t.worn),
       isBag: Boolean(t.isBag),
@@ -551,6 +553,17 @@ class CharacterApiService {
 
     const activeCareer = character.careers.find((c) => c.active) || character.careers[0]
 
+    const weaponsEnc = character.weapons.reduce((sum, w) => sum + (w.worn ? Math.max(0, (Number(w.enc) || 0) - 1) : Number(w.enc) || 0), 0)
+    const armourEnc = character.armour.reduce((sum, a) => sum + (a.worn ? Math.max(0, (Number(a.enc) || 0) - 1) : Number(a.enc) || 0), 0)
+    const trappingsEnc = character.trappings.reduce((sum, t) => sum + (t.worn ? Math.max(0, (Number(t.enc) || 0) - 1) : Number(t.enc) || 0) * (Number(t.qty) || 1), 0)
+    const coinsTotal = (Number(character.wealth?.gc) || 0) + (Number(character.wealth?.ss) || 0) + (Number(character.wealth?.bp) || 0)
+    const coinsEnc = Math.floor(coinsTotal / 200)
+    const sb = Math.floor(mapStat('S').current / 10)
+    const tb = Math.floor(mapStat('T').current / 10)
+    const wpb = Math.floor(mapStat('WP').current / 10)
+    const maxEnc = sb + tb
+    const totalEnc = weaponsEnc + armourEnc + trappingsEnc + coinsEnc
+
     return {
       uuid,
       name: character.name,
@@ -558,6 +571,14 @@ class CharacterApiService {
       appearance: character.appearance,
       class: activeCareer?.class || character.class || '',
       career: activeCareer?.career || character.career || '',
+      careerLevel: 1,
+      careerPath: activeCareer?.career || character.career || '',
+      careerAdvancement: {
+        tier1: true,
+        tier2: Boolean(activeCareer?.advances2?.some(Boolean)),
+        tier3: Boolean(activeCareer?.advances3?.some(Boolean)),
+        tier4: Boolean(activeCareer?.advances4?.some(Boolean)),
+      },
       careers: character.careers.map((c) => ({
         class: c.class || '',
         career: c.career || '',
@@ -569,6 +590,8 @@ class CharacterApiService {
       })),
       status: activeCareer?.status || character.status || '',
       movement: Number(character.movement) || 4,
+      walk: (Number(character.movement) || 4) * 2,
+      run: (Number(character.movement) || 4) * 4,
       advances2: activeCareer?.advances2 || character.advances2,
       advances3: activeCareer?.advances3 || character.advances3,
       advances4: activeCareer?.advances4 || character.advances4,
@@ -598,7 +621,19 @@ class CharacterApiService {
       corruptionPoints: Number(character.corruption?.current) || 0,
       wounds: {
         current: Number(character.wounds?.current) || 0,
+        max: sb + (tb * 2) + wpb + (Number(character.wounds?.hardy) || 0),
+        sb,
+        tbX2: tb * 2,
+        wpb,
         hardy: Number(character.wounds?.hardy) || 0,
+      },
+      encumbrance: {
+        weapons: weaponsEnc,
+        armour: armourEnc,
+        trappings: trappingsEnc,
+        other: coinsEnc,
+        max: maxEnc,
+        total: totalEnc,
       },
       wealth: {
         gc: Number(character.wealth?.gc) || 0,
@@ -651,10 +686,27 @@ class CharacterApiService {
         sin: 0,
       })),
       skills: [
-        ...basicSkills.map((s) => ({ name: s.name, characteristic: s.characteristic, adv: Number(s.adv) || 0, total: 0, type: 'Basic' })),
-        ...advancedSkills.map((s) => ({ name: s.name, characteristic: s.characteristic, adv: Number(s.adv) || 0, total: 0, type: 'Advanced' })),
+        ...basicSkills.map((s) => ({
+          name: s.name,
+          characteristic: s.characteristic,
+          adv: Number(s.adv) || 0,
+          total: (mapStat(s.characteristic)?.current || 0) + (Number(s.adv) || 0),
+          type: 'Basic',
+        })),
+        ...advancedSkills.map((s) => ({
+          name: s.name,
+          characteristic: s.characteristic,
+          adv: Number(s.adv) || 0,
+          total: (mapStat(s.characteristic)?.current || 0) + (Number(s.adv) || 0),
+          type: 'Advanced',
+        })),
       ],
-      languages: languages.map((l) => ({ name: l.name, int: 0, adv: Number(l.adv) || 0, skill: 0 })),
+      languages: languages.map((l) => ({
+        name: l.name,
+        int: mapStat('Int').current,
+        adv: Number(l.adv) || 0,
+        skill: mapStat('Int').current + (Number(l.adv) || 0),
+      })),
       spellsHidden: Boolean(character.spellsHidden),
       mountHidden: Boolean(character.mountHidden),
       mount: character.mount ? {
@@ -667,6 +719,7 @@ class CharacterApiService {
               stat
                 ? {
                     initial: Number(stat.initial) || 0,
+                    advances: Number(stat.advances) || 0,
                     current: (Number(stat.initial) || 0) + (Number(stat.advances) || 0),
                   }
                 : null,
@@ -684,7 +737,7 @@ class CharacterApiService {
           name: s.name || '',
           characteristic: s.characteristic || 'WS',
           adv: Number(s.adv) || 0,
-          total: 0,
+          total: (Number(character.mount?.characteristics?.[s.characteristic]?.initial) || 0) + (Number(s.adv) || 0),
           type: 'Advanced',
         })),
         traits: character.mount.traits.map((tr) => ({

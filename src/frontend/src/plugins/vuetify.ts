@@ -10,12 +10,12 @@ export default createVuetify({
         dark: true,
         colors: {
           primary: '#D4AF37', // Metallic Gold
-          secondary: '#38BDF8', // Steel Blue (non-red)
+          secondary: '#4A90E2', // Imperial / Royal Blue
           accent: '#00A896',
           error: '#E63946',
           info: '#457B9D',
           success: '#2A9D8F',
-          warning: '#E76F51',
+          warning: '#EAB308', // Warm Golden Yellow
           background: '#121316',
           surface: '#1E2026',
           'surface-variant': '#2A2D36',
@@ -25,18 +25,19 @@ export default createVuetify({
           'on-primary': '#121316',
           'on-secondary': '#FFFFFF',
           'on-error': '#FFFFFF',
+          'on-warning': '#121316',
         },
       },
       wfrpLight: {
         dark: false,
         colors: {
           primary: '#855B00',
-          secondary: '#475569', // Slate Steel (non-red)
+          secondary: '#2563EB', // Royal Blue
           accent: '#028090',
           error: '#D32F2F',
           info: '#1976D2',
           success: '#2E7D32',
-          warning: '#ED6C02',
+          warning: '#CA8A04', // Warm Amber Gold
           background: '#F4F4F6',
           surface: '#FFFFFF',
           'surface-variant': '#E2E8F0',
@@ -46,6 +47,7 @@ export default createVuetify({
           'on-primary': '#FFFFFF',
           'on-secondary': '#FFFFFF',
           'on-error': '#FFFFFF',
+          'on-warning': '#FFFFFF',
         },
       },
     },

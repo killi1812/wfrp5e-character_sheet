@@ -61,8 +61,6 @@ func sampleSheet() *charactersheet.CharacterSheet {
 		FateMax:          3,
 		Fortune:          2,
 		FortuneMax:       3,
-		Resilience:       3,
-		Resolve:          3,
 		Movement:         3,
 		Walk:             6,
 		Run:              12,
@@ -123,14 +121,16 @@ func sampleSheet() *charactersheet.CharacterSheet {
 		},
 		Trappings: []charactersheet.TrappingItem{
 			{
+				ID:          "bag-123",
 				Name:        "Backpack",
 				Category:    "Containers",
 				Enc:         1,
+				Qty:         1,
 				Description: "Sturdy leather backpack",
 				IsBag:       true,
 				BagSize:     5,
 				ContainedTrappings: []charactersheet.TrappingItem{
-					{Name: "Troll skull mug", Category: "Keepsake", Enc: 1, Description: "A mug made of bone"},
+					{ID: "item-456", Name: "Troll skull mug", Category: "Keepsake", Enc: 1, Qty: 2, Description: "A mug made of bone"},
 				},
 			},
 		},
@@ -188,7 +188,11 @@ func TestCharacterSheet_JsonSerialization(t *testing.T) {
 	assert.True(t, decoded.Armour[0].Worn)
 	assert.Len(t, decoded.Trappings, 1)
 	assert.True(t, decoded.Trappings[0].IsBag)
+	assert.Equal(t, "bag-123", decoded.Trappings[0].ID)
+	assert.Equal(t, 1, decoded.Trappings[0].Qty)
 	assert.Len(t, decoded.Trappings[0].ContainedTrappings, 1)
+	assert.Equal(t, "item-456", decoded.Trappings[0].ContainedTrappings[0].ID)
+	assert.Equal(t, 2, decoded.Trappings[0].ContainedTrappings[0].Qty)
 	assert.NotNil(t, decoded.Mount)
 	assert.Equal(t, "Warhorse", decoded.Mount.Name)
 	assert.Len(t, decoded.SpellsAndPrayers, 1)

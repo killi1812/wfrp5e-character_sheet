@@ -388,7 +388,8 @@ defineExpose({
 <template>
   <main class="wfrp-sheet-body pa-3 pa-md-5">
 
-    <SheetHeaderBlock :character="character" :is-dirty="isDirty" @open-menu="emit('openMenu')" />
+    <SheetHeaderBlock :character="character" :is-dirty="isDirty" :is-saving="isSaving"
+      @open-menu="emit('openMenu')" @save="saveSheet" />
     <SheetCharacteristicsBlock :character="character" :get-char-current="getCharCurrent"
       :agility-penalty="agilityPenalty" />
     <SheetVitalsBlock :character="character" :computed-walk="computedWalk" :computed-run="computedRun"

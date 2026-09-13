@@ -106,9 +106,11 @@ type ArmourItem struct {
 }
 
 type TrappingItem struct {
+	ID                 string         `json:"id,omitempty" bson:"id,omitempty"`
 	Name               string         `json:"name" bson:"name"`
 	Category           string         `json:"category" bson:"category"`
 	Enc                int            `json:"enc" bson:"enc"`
+	Qty                int            `json:"qty" bson:"qty"`
 	Description        string         `json:"description" bson:"description"`
 	Worn               bool           `json:"worn" bson:"worn"`
 	IsBag              bool           `json:"isBag" bson:"is_bag"`
@@ -209,13 +211,11 @@ type CharacterSheet struct {
 	// Characteristics
 	Characteristics Characteristics `json:"characteristics" bson:"characteristics"`
 
-	// Fate & Fortune, Resilience & Resolve, Movement
+	// Fate & Fortune, Movement
 	Fate       int `json:"fate" bson:"fate"`
 	FateMax    int `json:"fateMax" bson:"fate_max"`
 	Fortune    int `json:"fortune" bson:"fortune"`
 	FortuneMax int `json:"fortuneMax" bson:"fortune_max"`
-	Resilience int `json:"resilience" bson:"resilience"`
-	Resolve    int `json:"resolve" bson:"resolve"`
 	Movement   int `json:"movement" bson:"movement"`
 	Walk       int `json:"walk" bson:"walk"`
 	Run        int `json:"run" bson:"run"`
