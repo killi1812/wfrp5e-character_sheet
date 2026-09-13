@@ -388,8 +388,8 @@ defineExpose({
 <template>
   <main class="wfrp-sheet-body pa-3 pa-md-5">
 
-    <SheetHeaderBlock :character="character" :is-dirty="isDirty" :is-saving="isSaving"
-      @open-menu="emit('openMenu')" @save="saveSheet" />
+    <SheetHeaderBlock :character="character" :is-dirty="isDirty" :is-saving="isSaving" @open-menu="emit('openMenu')"
+      @save="saveSheet" />
     <SheetCharacteristicsBlock :character="character" :get-char-current="getCharCurrent"
       :agility-penalty="agilityPenalty" />
     <SheetVitalsBlock :character="character" :computed-walk="computedWalk" :computed-run="computedRun"
@@ -409,7 +409,7 @@ defineExpose({
       @add-mutation="addMutation" @remove-mutation="removeMutation" />
 
     <SheetAmbitionsNotesBlock :character="character" />
-    <SheetMountBlock v-if="!character.mountHidden" :mount="getMount()" @add-attack="addMountAttack"
+    <SheetMountBlock v-if="!character.mountHidden && false" :mount="getMount()" @add-attack="addMountAttack"
       @remove-attack="removeMountAttack" @add-skill="addMountSkill" @remove-skill="removeMountSkill"
       @add-trait="addMountTrait" @remove-trait="removeMountTrait" @add-trapping="addMountTrapping"
       @remove-trapping="removeMountTrapping" />

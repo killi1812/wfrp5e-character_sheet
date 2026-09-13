@@ -37,16 +37,9 @@ const emit = defineEmits<{
     <v-card color="surface" elevation="2"
       class="pa-3 rounded-lg border d-flex flex-column justify-center align-center actions-card">
       <div class="d-flex align-center justify-space-between w-100 mb-2">
-        <v-chip
-          :color="isDirty ? 'warning' : 'success'"
-          size="small"
-          variant="tonal"
-          class="font-weight-bold"
-          :class="{ 'cursor-pointer': isDirty }"
-          :loading="isSaving"
-          :title="isDirty ? 'Click to save sheet (Ctrl+S)' : 'All changes saved'"
-          @click="isDirty && emit('save')"
-        >
+        <v-chip :color="isDirty ? 'warning' : 'success'" size="small" variant="tonal" class="font-weight-bold"
+          :class="{ 'cursor-pointer': isDirty }" :loading="isSaving"
+          :title="isDirty ? 'Click to save sheet (Ctrl+S)' : 'All changes saved'" @click="isDirty && emit('save')">
           <v-icon start :icon="isDirty ? 'mdi-alert-circle-outline' : 'mdi-check-circle-outline'" size="small" />
           {{ isDirty ? 'Not saved' : 'Saved' }}
         </v-chip>
