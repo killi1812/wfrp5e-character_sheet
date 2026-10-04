@@ -6,11 +6,11 @@ import {
   STAT_KEYS,
   STAT_NAMES,
   type StatKey,
-} from '../../constants/placeholders'
-import { formatDamage } from '../../utils/damage'
-import SectionCard from '../ui/SectionCard.vue'
-import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
-import CharacteristicCard from '../ui/CharacteristicCard.vue'
+} from '../../../constants/placeholders'
+import { formatDamage } from '../../../utils/damage'
+import SectionCard from '../../ui/SectionCard.vue'
+import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
+import CharacteristicCard from '../../ui/CharacteristicCard.vue'
 
 const props = defineProps<{
   mount: MountData

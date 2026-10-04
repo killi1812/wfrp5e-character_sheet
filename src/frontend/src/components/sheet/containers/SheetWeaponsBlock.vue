@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { Weapon } from '../../constants/placeholders'
-import { formatDamage } from '../../utils/damage'
-import SectionCard from '../ui/SectionCard.vue'
-import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
+import type { Weapon } from '../../../constants/placeholders'
+import { formatDamage } from '../../../utils/damage'
+import SectionCard from '../../ui/SectionCard.vue'
+import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
 
 const props = defineProps<{
   weapons: Weapon[]

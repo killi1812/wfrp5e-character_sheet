@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { CharacterModel } from '../../constants/placeholders'
-import SectionCard from '../ui/SectionCard.vue'
-import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
-import AddBtn from '../ui/AddBtn.vue'
-import SinCounter from '../ui/SinCounter.vue'
+import type { CharacterModel } from '../../../constants/placeholders'
+import SectionCard from '../../ui/SectionCard.vue'
+import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
+import AddBtn from '../../ui/AddBtn.vue'
+import SinCounter from '../../ui/SinCounter.vue'
 
 defineProps<{
   character: CharacterModel

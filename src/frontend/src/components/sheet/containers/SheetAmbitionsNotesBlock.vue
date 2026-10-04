@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { CharacterModel } from '../../constants/placeholders'
-import SectionCard from '../ui/SectionCard.vue'
-import ArmourPointsDiagram from './ArmourPointsDiagram.vue'
+import type { CharacterModel } from '../../../constants/placeholders'
+import SectionCard from '../../ui/SectionCard.vue'
+import ArmourPointsDiagram from '../cards/ArmourPointsDiagram.vue'
 
 defineProps<{
   character: CharacterModel

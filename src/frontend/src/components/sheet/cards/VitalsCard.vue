@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { CharacterModel } from '../../constants/placeholders'
-import TooltipField from '../ui/TooltipField.vue'
-import SectionCard from '../ui/SectionCard.vue'
+import type { CharacterModel } from '../../../constants/placeholders'
+import TooltipField from '../../ui/TooltipField.vue'
+import SectionCard from '../../ui/SectionCard.vue'
 
 const props = defineProps<{
   character: CharacterModel

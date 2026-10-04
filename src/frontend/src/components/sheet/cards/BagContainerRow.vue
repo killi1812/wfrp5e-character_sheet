@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { TrappingItem } from '../../constants/placeholders'
-import AddBtn from '../ui/AddBtn.vue'
-import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
+import type { TrappingItem } from '../../../constants/placeholders'
+import AddBtn from '../../ui/AddBtn.vue'
+import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
 
 defineProps<{
   bag: TrappingItem

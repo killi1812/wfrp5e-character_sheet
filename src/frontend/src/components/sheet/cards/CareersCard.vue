@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { CharacterModel, CareerEntry } from '../../constants/placeholders'
-import { NEW_ITEM_TEMPLATES } from '../../constants/placeholders'
-import SectionCard from '../ui/SectionCard.vue'
-import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
+import type { CharacterModel, CareerEntry } from '../../../constants/placeholders'
+import { NEW_ITEM_TEMPLATES } from '../../../constants/placeholders'
+import SectionCard from '../../ui/SectionCard.vue'
+import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
 import CareerTierCard from './CareerTierCard.vue'
 
 const props = defineProps<{

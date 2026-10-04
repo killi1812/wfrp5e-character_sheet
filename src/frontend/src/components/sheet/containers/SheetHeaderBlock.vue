@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { CharacterModel } from '../../constants/placeholders'
-import TooltipField from '../ui/TooltipField.vue'
+import type { CharacterModel } from '../../../constants/placeholders'
+import TooltipField from '../../ui/TooltipField.vue'
 
 defineProps<{
   character: CharacterModel

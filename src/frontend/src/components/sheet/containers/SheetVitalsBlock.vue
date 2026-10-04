@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { CharacterModel } from '../../constants/placeholders'
-import VitalsCard from './VitalsCard.vue'
-import CareersCard from './CareersCard.vue'
+import type { CharacterModel } from '../../../constants/placeholders'
+import VitalsCard from '../cards/VitalsCard.vue'
+import CareersCard from '../cards/CareersCard.vue'
 
 defineProps<{
   character: CharacterModel

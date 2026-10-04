@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { ArmourItem, TrappingItem } from '../../constants/placeholders'
-import { NEW_ITEM_TEMPLATES } from '../../constants/placeholders'
-import SectionCard from '../ui/SectionCard.vue'
-import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
-import AddBtn from '../ui/AddBtn.vue'
-import BagContainerRow from './BagContainerRow.vue'
+import type { ArmourItem, TrappingItem } from '../../../constants/placeholders'
+import { NEW_ITEM_TEMPLATES } from '../../../constants/placeholders'
+import SectionCard from '../../ui/SectionCard.vue'
+import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
+import AddBtn from '../../ui/AddBtn.vue'
+import BagContainerRow from '../cards/BagContainerRow.vue'
 
 const props = defineProps<{
   armour: ArmourItem[]

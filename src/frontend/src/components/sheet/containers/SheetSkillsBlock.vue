@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { Skill } from '../../constants/placeholders'
-import SectionCard from '../ui/SectionCard.vue'
-import DeleteRowBtn from '../ui/DeleteRowBtn.vue'
-import ImportantBtn from '../ui/ImportantBtn.vue'
+import type { Skill } from '../../../constants/placeholders'
+import SectionCard from '../../ui/SectionCard.vue'
+import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
+import ImportantBtn from '../../ui/ImportantBtn.vue'
 
 const props = defineProps<{
   basicSkills: Skill[]
@@ -32,7 +32,7 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
               <th class="text-left font-weight-bold">Skill</th>
               <th class="text-center font-weight-bold" style="width: 70px;">Char</th>
               <th class="text-center font-weight-bold" style="width: 70px;">Adv</th>
-              <th class="text-right font-weight-bold" style="width: 70px;">Total</th>
+              <th class="text-center font-weight-bold" style="width: 70px;">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -48,10 +48,10 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
                 <input v-model.number="skill.adv" type="number" class="skill-num-input font-weight-medium"
                   placeholder="0" />
               </td>
-              <td class="text-right font-weight-black">
+              <td class="text-center font-weight-black">
                 <v-tooltip text="Skill Total = Characteristic + Advances" location="right">
                   <template #activator="{ props: tProps }">
-                    <span v-bind="tProps" class="skill-total-badge text-high-emphasis">
+                    <span v-bind="tProps" class="text-high-emphasis">
                       {{ getSkillTotal(skill) }}
                     </span>
                   </template>
@@ -72,7 +72,7 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
               <th class="text-left font-weight-bold">Skill</th>
               <th class="text-center font-weight-bold" style="width: 70px;">Char</th>
               <th class="text-center font-weight-bold" style="width: 70px;">Adv</th>
-              <th class="text-right font-weight-bold" style="width: 70px;">Total</th>
+              <th class="text-center font-weight-bold" style="width: 70px;">Total</th>
               <th style="width: 40px;"></th>
             </tr>
           </thead>
@@ -93,10 +93,10 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
                 <input v-model.number="skill.adv" type="number" class="skill-num-input font-weight-medium"
                   placeholder="0" />
               </td>
-              <td class="text-right font-weight-black">
+              <td class="text-center font-weight-black">
                 <v-tooltip text="Skill Total = Characteristic + Advances" location="right">
                   <template #activator="{ props: tProps }">
-                    <span v-bind="tProps" class="skill-total-badge text-high-emphasis">
+                    <span v-bind="tProps" class="text-high-emphasis">
                       {{ getSkillTotal(skill) }}
                     </span>
                   </template>
@@ -154,16 +154,6 @@ const getSkillTotal = (skill: { characteristic: string; adv: number }) => {
 .skill-text-input:focus {
   border-color: rgb(var(--v-theme-primary));
   background: rgb(var(--v-theme-surface));
-}
-
-.skill-total-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  background: rgba(var(--v-theme-surface), 0.8);
-  color: rgb(var(--v-theme-on-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 4px;
-  font-weight: 700;
 }
 
 .skill-table :deep(td) {

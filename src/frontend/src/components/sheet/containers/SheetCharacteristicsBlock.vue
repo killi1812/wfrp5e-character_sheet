@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { CharacterModel } from '../../constants/placeholders'
-import CharacteristicCard from '../ui/CharacteristicCard.vue'
+import type { CharacterModel } from '../../../constants/placeholders'
+import CharacteristicCard from '../../ui/CharacteristicCard.vue'
 
 const props = defineProps<{
   character: CharacterModel
