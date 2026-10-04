@@ -242,6 +242,7 @@ type CharacterSheet struct {
 	Mount            *MountData     `json:"mount,omitempty" bson:"mount,omitempty"`
 	SpellsHidden     bool           `json:"spellsHidden" bson:"spells_hidden"`
 	MountHidden      bool           `json:"mountHidden" bson:"mount_hidden"`
+	Sturdy           bool           `json:"sturdy" bson:"sturdy"`
 	Notes            string         `json:"notes" bson:"notes"`
 
 	CreatedAt time.Time `json:"createdAt" bson:"created_at"`

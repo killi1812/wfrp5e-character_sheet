@@ -403,6 +403,7 @@ defineExpose({
       @remove-weapon="removeWeapon" />
     <SheetArmourTrappingsBlock :armour="character.armour" :trappings="character.trappings" :wealth="character.wealth"
       :computed-total-enc="computedTotalEnc" :computed-max-enc="computedMaxEnc" :enc-breakdown="encBreakdown"
+      :sturdy="character.sturdy" @update:sturdy="character.sturdy = $event"
       @add-armour="addArmour" @remove-armour="removeArmour" @add-trapping="addTrapping" @add-bag="addBag"
       @remove-trapping="removeTrapping" />
     <SheetSpellsMutationsBlock :character="character" @add-spell="addSpell" @remove-spell="removeSpell"

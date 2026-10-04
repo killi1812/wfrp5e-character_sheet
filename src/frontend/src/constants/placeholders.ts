@@ -140,6 +140,7 @@ export interface CharacterModel {
   mount?: MountData
   spellsHidden: boolean
   mountHidden: boolean
+  sturdy?: boolean
   importantCharacteristics: string[]
   notes: string
 }
@@ -250,6 +251,7 @@ export const DEFAULT_CHARACTER: CharacterModel = {
   },
   spellsHidden: false,
   mountHidden: true,
+  sturdy: false,
   importantCharacteristics: [],
 
   notes: '',
@@ -464,6 +466,7 @@ export const MOCK_CHARACTER: CharacterModel = {
   },
   spellsHidden: false,
   mountHidden: true,
+  sturdy: false,
   importantCharacteristics: ['WP', 'Int'],
 
   notes: 'Trained at the Colleges of Magic in Altdorf under Master Thaddeus. Seeking rare alchemical reagents in the Reikland to advance to Master Wizard.',

@@ -13,6 +13,7 @@ const props = defineProps<{
   wealth: { gc: number; ss: number; bp: number }
   computedTotalEnc: number
   computedMaxEnc: number
+  sturdy?: boolean
   encBreakdown?: {
     weapons: number
     armour: number
@@ -28,6 +29,7 @@ const emit = defineEmits<{
   (e: 'addTrapping'): void
   (e: 'addBag'): void
   (e: 'removeTrapping', index: number): void
+  (e: 'update:sturdy', value: boolean): void
 }>()
 
 // Track open/collapsed state of bags (default to true/open)
@@ -128,7 +130,7 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
           <AddBtn label="Add Bag" @click="emit('addBag')" />
         </template>
 
-        <!-- Encumbrance Summary with Hover Breakdown -->
+        <!-- Encumbrance Summary with Hover Breakdown & Sturdy Checkbox -->
         <div
           class="d-flex justify-space-between align-center text-caption font-weight-bold mb-3 text-primary pa-2 bg-surface-variant rounded border">
           <v-tooltip location="top" :open-on-focus="false">
@@ -147,8 +149,27 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
               <div>Coins: {{ coinsEnc }} Enc ({{ totalCoins }} coins)</div>
               <div class="font-weight-bold border-t mt-1 pt-1">
                 Total: {{ computedTotalEnc }} / {{ computedMaxEnc }} Enc
+                <span v-if="sturdy" class="text-secondary ml-1">(Sturdy: SB×2 + TB)</span>
+                <span v-else class="text-medium-emphasis ml-1">(SB + TB)</span>
               </div>
             </div>
+          </v-tooltip>
+
+          <!-- Sturdy Talent Checkbox -->
+          <v-tooltip text="Sturdy Talent: Max Encumbrance = (SB × 2) + TB" location="top" :open-on-focus="false">
+            <template #activator="{ props: tProps }">
+              <label v-bind="tProps" class="d-flex align-center cursor-pointer user-select-none">
+                <v-checkbox-btn
+                  :model-value="sturdy"
+                  density="compact"
+                  hide-details
+                  color="primary"
+                  class="mr-1"
+                  @update:model-value="emit('update:sturdy', Boolean($event))"
+                />
+                <span class="text-caption font-weight-bold text-high-emphasis">Sturdy</span>
+              </label>
+            </template>
           </v-tooltip>
         </div>
 
@@ -160,7 +181,7 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
                 <th style="width: 28px;"></th>
                 <th>Item Name</th>
                 <th class="text-center" style="width: 60px;">Enc</th>
-                <th class="text-center" style="width: 70px;">Qty/Size</th>
+                <th class="text-center" style="width: 70px;">Qty</th>
                 <th class="text-center" style="width: 45px;">Worn</th>
                 <th class="text-right" style="width: 70px;">Action</th>
               </tr>

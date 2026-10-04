@@ -17,7 +17,11 @@ export function useEncumbrance(
   getCharBonus: (code: string) => number,
   getCharCurrent: (code: string) => number
 ) {
-  const computedMaxEnc = computed(() => getCharBonus('S') + getCharBonus('T'))
+  const computedMaxEnc = computed(() => {
+    const sb = getCharBonus('S')
+    const tb = getCharBonus('T')
+    return (character.value.sturdy ? sb * 2 : sb) + tb
+  })
 
   const encBreakdown = computed<EncumbranceBreakdown>(() => {
     let weapons = 0

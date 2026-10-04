@@ -152,6 +152,7 @@ func sampleSheet() *charactersheet.CharacterSheet {
 			},
 		},
 		Notes:     "A great companion to Felix.",
+		Sturdy:    true,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -199,6 +200,7 @@ func TestCharacterSheet_JsonSerialization(t *testing.T) {
 	assert.Len(t, decoded.Mutations, 1)
 	assert.Equal(t, orig.Wealth.GC, decoded.Wealth.GC)
 	assert.Equal(t, orig.Encumbrance.Total, decoded.Encumbrance.Total)
+	assert.True(t, decoded.Sturdy)
 }
 
 func TestCharacterSheet_BsonSerialization(t *testing.T) {
@@ -218,4 +220,5 @@ func TestCharacterSheet_BsonSerialization(t *testing.T) {
 	assert.Equal(t, orig.UserUuid, decoded.UserUuid)
 	assert.Equal(t, orig.Name, decoded.Name)
 	assert.Equal(t, orig.Wounds.Current, decoded.Wounds.Current)
+	assert.True(t, decoded.Sturdy)
 }

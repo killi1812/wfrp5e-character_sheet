@@ -493,6 +493,7 @@ class CharacterApiService {
       mount,
       spellsHidden: Boolean(backendData.spellsHidden),
       mountHidden: backendData.mountHidden !== undefined ? Boolean(backendData.mountHidden) : true,
+      sturdy: Boolean(backendData.sturdy),
       importantCharacteristics: Array.isArray(backendData.importantCharacteristics) ? backendData.importantCharacteristics : [],
     }
 
@@ -709,6 +710,7 @@ class CharacterApiService {
       })),
       spellsHidden: Boolean(character.spellsHidden),
       mountHidden: Boolean(character.mountHidden),
+      sturdy: Boolean(character.sturdy),
       mount: character.mount ? {
         name: character.mount.name || '',
         characteristics: Object.fromEntries(
