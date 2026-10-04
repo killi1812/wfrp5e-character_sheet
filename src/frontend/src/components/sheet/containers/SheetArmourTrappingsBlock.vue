@@ -6,6 +6,7 @@ import SectionCard from '../../ui/SectionCard.vue'
 import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
 import AddBtn from '../../ui/AddBtn.vue'
 import BagContainerRow from '../cards/BagContainerRow.vue'
+import NumberInput from '../../ui/NumberInput.vue'
 
 const props = defineProps<{
   armour: ArmourItem[]
@@ -195,13 +196,17 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
                     <v-text-field v-model="t.name" variant="plain" density="compact" hide-details
                       placeholder="Item Name" />
                   </td>
-                  <td style="max-width: 60px;">
-                    <v-text-field v-model.number="t.enc" type="number" variant="plain" density="compact" hide-details
-                      class="text-center" placeholder="0" />
+                  <td class="text-center" style="width: 60px;">
+                    <NumberInput
+                      v-model="t.enc"
+                      placeholder="0"
+                    />
                   </td>
-                  <td style="max-width: 70px;">
-                    <v-text-field v-model.number="t.qty" type="number" variant="plain" density="compact" hide-details
-                      class="text-center" placeholder="1" />
+                  <td class="text-center" style="width: 70px;">
+                    <NumberInput
+                      v-model="t.qty"
+                      placeholder="1"
+                    />
                   </td>
                   <td class="text-center">
                     <v-checkbox-btn v-model="t.worn" density="compact" hide-details color="primary" />
@@ -224,14 +229,19 @@ const coinsEnc = computed(() => Math.floor(totalCoins.value / 200))
                         placeholder="Bag Name" class="font-weight-bold" />
                     </div>
                   </td>
-                  <td style="max-width: 60px;">
-                    <v-text-field v-model.number="t.enc" type="number" variant="plain" density="compact" hide-details
-                      class="text-center" placeholder="1" />
+                  <td class="text-center" style="width: 60px;">
+                    <NumberInput
+                      v-model="t.enc"
+                      placeholder="1"
+                    />
                   </td>
                   <td style="min-width: 100px;">
                     <div class="d-flex align-center gap-1 justify-center">
-                      <v-text-field v-model.number="t.bagSize" type="number" variant="plain" density="compact"
-                        hide-details class="text-center" placeholder="5" style="max-width: 45px;" />
+                      <NumberInput
+                        v-model="t.bagSize"
+                        placeholder="5"
+                        style="width: 45px;"
+                      />
                       <span class="text-caption text-medium-emphasis font-weight-bold">
                         ({{ getContainedEnc(t) }}/{{ t.bagSize || 0 }})
                       </span>

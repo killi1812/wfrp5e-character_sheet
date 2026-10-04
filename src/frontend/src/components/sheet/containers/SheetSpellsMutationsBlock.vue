@@ -4,6 +4,7 @@ import SectionCard from '../../ui/SectionCard.vue'
 import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
 import AddBtn from '../../ui/AddBtn.vue'
 import SinCounter from '../../ui/SinCounter.vue'
+import NumberInput from '../../ui/NumberInput.vue'
 
 defineProps<{
   character: CharacterModel
@@ -31,7 +32,7 @@ const emit = defineEmits<{
           <thead>
             <tr>
               <th style="width: 200px;">Name</th>
-              <th class="text-center" style="width: 45px;">CN</th>
+              <th class="text-center" style="width: 50px;">CN</th>
               <th style="width: 100px;">Range</th>
               <th style="width: 100px;">Target</th>
               <th style="width: 100px;">Duration</th>
@@ -45,9 +46,8 @@ const emit = defineEmits<{
                 <v-text-field v-model="spell.name" variant="plain" density="compact" hide-details
                   placeholder="Spell / Prayer" />
               </td>
-              <td style="width: 45px; max-width: 45px;">
-                <v-text-field v-model.number="spell.cn" type="number" variant="plain" density="compact" hide-details
-                  class="text-center" placeholder="0" />
+              <td class="text-center" style="width: 50px;">
+                <NumberInput v-model="spell.cn" placeholder="0" />
               </td>
               <td style="width: 100px; max-width: 100px;">
                 <v-text-field v-model="spell.range" variant="plain" density="compact" hide-details

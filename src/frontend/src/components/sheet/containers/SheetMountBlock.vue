@@ -11,6 +11,7 @@ import { formatDamage } from '../../../utils/damage'
 import SectionCard from '../../ui/SectionCard.vue'
 import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
 import CharacteristicCard from '../../ui/CharacteristicCard.vue'
+import NumberInput from '../../ui/NumberInput.vue'
 
 const props = defineProps<{
   mount: MountData
@@ -208,7 +209,9 @@ function getMountSkillTotal(skill: Skill): number {
               <tr v-for="(sk, idx) in mount.skills" :key="idx">
                 <td><v-text-field v-model="sk.name" variant="plain" density="compact" hide-details placeholder="Skill Name" /></td>
                 <td style="max-width: 60px;"><v-text-field v-model="sk.characteristic" variant="plain" density="compact" hide-details class="text-center text-uppercase" placeholder="Ag" /></td>
-                <td style="max-width: 60px;"><v-text-field v-model.number="sk.adv" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" /></td>
+                <td class="text-center" style="width: 60px;">
+                  <NumberInput v-model="sk.adv" placeholder="0" />
+                </td>
                 <td class="text-right font-weight-bold">
                   {{ getMountSkillTotal(sk) }}
                 </td>
@@ -272,8 +275,18 @@ function getMountSkillTotal(skill: Skill): number {
               <tr v-for="(trap, idx) in mount.trappings" :key="idx">
                 <td><v-text-field v-model="trap.name" variant="plain" density="compact" hide-details placeholder="Saddle / Harness" /></td>
                 <td style="max-width: 90px;"><v-text-field v-model="trap.category" variant="plain" density="compact" hide-details placeholder="Tack" /></td>
-                <td style="max-width: 50px;"><v-text-field v-model.number="trap.enc" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="0" /></td>
-                <td style="max-width: 50px;"><v-text-field v-model.number="trap.qty" type="number" variant="plain" density="compact" hide-details class="text-center" placeholder="1" /></td>
+                <td class="text-center" style="width: 50px;">
+                  <NumberInput
+                    v-model="trap.enc"
+                    placeholder="0"
+                  />
+                </td>
+                <td class="text-center" style="width: 50px;">
+                  <NumberInput
+                    v-model="trap.qty"
+                    placeholder="1"
+                  />
+                </td>
                 <td>
                   <v-textarea
                     v-model="trap.desc"

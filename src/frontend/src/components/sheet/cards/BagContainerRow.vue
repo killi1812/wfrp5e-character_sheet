@@ -2,6 +2,7 @@
 import type { TrappingItem } from '../../../constants/placeholders'
 import AddBtn from '../../ui/AddBtn.vue'
 import DeleteRowBtn from '../../ui/DeleteRowBtn.vue'
+import NumberInput from '../../ui/NumberInput.vue'
 
 defineProps<{
   bag: TrappingItem
@@ -45,13 +46,17 @@ const emit = defineEmits<{
                 <v-text-field v-model="sub.name" variant="plain" density="compact" hide-details
                   placeholder="Item Name" />
               </td>
-              <td style="width: 60px;">
-                <v-text-field v-model.number="sub.enc" type="number" variant="plain" density="compact" hide-details
-                  class="text-center" placeholder="0" />
+              <td class="text-center" style="width: 60px;">
+                <NumberInput
+                  v-model="sub.enc"
+                  placeholder="0"
+                />
               </td>
-              <td style="width: 60px;">
-                <v-text-field v-model.number="sub.qty" type="number" variant="plain" density="compact" hide-details
-                  class="text-center" placeholder="1" />
+              <td class="text-center" style="width: 60px;">
+                <NumberInput
+                  v-model="sub.qty"
+                  placeholder="1"
+                />
               </td>
               <td style="width: 45px;" class="text-center">
                 <v-checkbox-btn v-model="sub.worn" density="compact" hide-details color="primary" />
