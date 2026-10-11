@@ -259,6 +259,117 @@ func TestUserCtn_Create(t *testing.T) {
 	})
 }
 
+func TestUserCtn_Register(t *testing.T) {
+	t.Run("Valid registration without auth header returns 201", func(t *testing.T) {
+		mock := &mockUserCrudService{
+			createFunc: func(u *User, pass string) (*User, error) {
+				assert.Equal(t, "registrant", u.Username)
+				assert.Equal(t, "securepassword123", pass)
+				assert.Equal(t, ROLE_USER, u.Role)
+				u.Uuid = uuid.New()
+				return u, nil
+			},
+		}
+		router, _ := setupUserTestRouter(mock)
+
+		payload := RegisterUserDto{
+			Username: "registrant",
+			Email:    "registrant@test.com",
+			Password: "securepassword123",
+		}
+		body, _ := json.Marshal(payload)
+
+		req, _ := http.NewRequest(http.MethodPost, "/api/user/register", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var resp UserDto
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		assert.NoError(t, err)
+		assert.Equal(t, "registrant", resp.Username)
+		assert.Equal(t, "user", resp.Role)
+	})
+
+	t.Run("Duplicate username returns 409 Conflict", func(t *testing.T) {
+		mock := &mockUserCrudService{
+			createFunc: func(u *User, pass string) (*User, error) {
+				return nil, errors.New("username already exists")
+			},
+		}
+		router, _ := setupUserTestRouter(mock)
+
+		payload := RegisterUserDto{
+			Username: "existinguser",
+			Password: "password123",
+		}
+		body, _ := json.Marshal(payload)
+
+		req, _ := http.NewRequest(http.MethodPost, "/api/user/register", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusConflict, w.Code)
+	})
+
+	t.Run("Password too short returns 400 Bad Request", func(t *testing.T) {
+		router, _ := setupUserTestRouter(&mockUserCrudService{})
+
+		payload := RegisterUserDto{
+			Username: "validname",
+			Password: "123",
+		}
+		body, _ := json.Marshal(payload)
+
+		req, _ := http.NewRequest(http.MethodPost, "/api/user/register", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Missing username returns 400 Bad Request", func(t *testing.T) {
+		router, _ := setupUserTestRouter(&mockUserCrudService{})
+
+		payload := map[string]string{
+			"password": "validpassword123",
+		}
+		body, _ := json.Marshal(payload)
+
+		req, _ := http.NewRequest(http.MethodPost, "/api/user/register", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Service failure returns 500", func(t *testing.T) {
+		mock := &mockUserCrudService{
+			createFunc: func(u *User, pass string) (*User, error) {
+				return nil, errors.New("database connection failed")
+			},
+		}
+		router, _ := setupUserTestRouter(mock)
+
+		payload := RegisterUserDto{
+			Username: "registrant",
+			Password: "securepassword123",
+		}
+		body, _ := json.Marshal(payload)
+
+		req, _ := http.NewRequest(http.MethodPost, "/api/user/register", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
 func TestUserCtn_Update(t *testing.T) {
 	targetUuid := uuid.New()
 	adminUuid := uuid.New()

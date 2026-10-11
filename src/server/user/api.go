@@ -2,6 +2,7 @@ package user
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/killi1812/wfrp5e-character_sheet/app"
 	"github.com/killi1812/wfrp5e-character_sheet/util/auth"
@@ -36,17 +37,21 @@ func (u *UserCtn) RegisterEndpoints(api *gin.RouterGroup) {
 	// create a group with the name of the router
 	group := api.Group("/user")
 
-	// Protected endpint
+	// Public unauthenticated endpoints
+	group.POST("/register", u.register)
+
+	// Protected endpoint
 	group.GET("/my-data", auth.Protect(), u.getLoggedInUser)
 
-	// register Endpoints
-	group.Use(auth.Protect(string(ROLE_ADMIN)))
-	group.POST("/", u.create)
-	group.GET("/:uuid", u.get)
-	group.PUT("/:uuid", u.update)
-	group.DELETE("/:uuid", u.delete)
-	group.GET("/all-users", u.getAllUsersForSuperAdmin)
-	group.GET("/search", u.searchUsersByName)
+	// Admin-only endpoints
+	adminGroup := group.Group("")
+	adminGroup.Use(auth.Protect(string(ROLE_ADMIN)))
+	adminGroup.POST("/", u.create)
+	adminGroup.GET("/:uuid", u.get)
+	adminGroup.PUT("/:uuid", u.update)
+	adminGroup.DELETE("/:uuid", u.delete)
+	adminGroup.GET("/all-users", u.getAllUsersForSuperAdmin)
+	adminGroup.GET("/search", u.searchUsersByName)
 }
 
 // UserExample godoc
@@ -75,6 +80,42 @@ func (u *UserCtn) get(c *gin.Context) {
 
 	uDto := UserDto{}
 	c.JSON(http.StatusOK, uDto.FromModel(user))
+}
+
+// Register godoc
+//
+//	@Summary	Register a new user
+//	@Tags		user
+//	@Produce	json
+//	@Success	201	{object}	UserDto
+//	@Failure	400
+//	@Failure	409
+//	@Failure	500
+//	@Param		model	body	RegisterUserDto	true	"Data for registering user"
+//	@Router		/user/register [post]
+func (u *UserCtn) register(c *gin.Context) {
+	var inputDto RegisterUserDto
+	if err := c.BindJSON(&inputDto); err != nil {
+		u.logger.Errorf("Failed to bind register error = %+v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid registration data. Username must be at least 2 characters and password at least 6 characters."})
+		return
+	}
+
+	newUser := inputDto.ToModel()
+
+	user, err := u.UserCrud.Create(newUser, inputDto.Password)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "already exists") {
+			c.JSON(http.StatusConflict, gin.H{"error": "Username already exists"})
+			return
+		}
+		u.logger.Errorf("Failed to register user error = %+v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+
+	responseDto := UserDto{}.FromModel(user)
+	c.JSON(http.StatusCreated, responseDto)
 }
 
 // UserExample godoc

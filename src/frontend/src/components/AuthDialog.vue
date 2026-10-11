@@ -98,32 +98,34 @@ async function handleRegister() {
     errorMessage.value = 'Username and password are required.'
     return
   }
+  if (regPassword.value.length < 6) {
+    errorMessage.value = 'Password must be at least 6 characters long.'
+    return
+  }
   loading.value = true
   errorMessage.value = ''
 
   try {
-    const res = await fetch('/api/user/', {
+    const res = await fetch('/api/user/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: regUsername.value,
         email: regEmail.value || undefined,
         password: regPassword.value,
-        role: 'user',
       }),
     })
 
     if (res.ok) {
-      tab.value = 'login'
       loginUsername.value = regUsername.value
+      loginPassword.value = regPassword.value
+      await handleLogin()
     } else {
-      // Auto login fallback for test environments
-      tab.value = 'login'
-      loginUsername.value = regUsername.value
+      const errData = await res.json().catch(() => null)
+      errorMessage.value = errData?.error || 'Registration failed.'
     }
-  } catch {
-    tab.value = 'login'
-    loginUsername.value = regUsername.value
+  } catch (err: any) {
+    errorMessage.value = err?.message || 'Network error during registration.'
   } finally {
     loading.value = false
   }

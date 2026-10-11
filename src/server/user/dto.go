@@ -51,6 +51,23 @@ func (NewUserDto) FromModel(m *User) NewUserDto {
 	return dto
 }
 
+type RegisterUserDto struct {
+	Username string `json:"username" binding:"required,min=2,max=100"`
+	Email    string `json:"email" binding:"omitempty,email"`
+	Password string `json:"password" binding:"required,min=6"`
+	Role     string `json:"role,omitempty"`
+}
+
+// ToModel creates a User model with forced ROLE_USER
+func (dto RegisterUserDto) ToModel() *User {
+	return &User{
+		Uuid:     uuid.New(),
+		Username: dto.Username,
+		Email:    dto.Email,
+		Role:     ROLE_USER,
+	}
+}
+
 type UserDto struct {
 	Uuid        string `json:"uuid"`
 	Username    string `json:"username"`

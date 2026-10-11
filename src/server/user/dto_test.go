@@ -201,3 +201,31 @@ func TestUserDto_FromModel(t *testing.T) {
 
 	assert.Equal(t, expectedDto, gotDto)
 }
+
+func TestRegisterUserDto_ToModel(t *testing.T) {
+	t.Run("Valid DTO creates user with ROLE_USER", func(t *testing.T) {
+		dto := user.RegisterUserDto{
+			Username: "newregistrant",
+			Email:    "registrant@example.com",
+			Password: "mypassword123",
+		}
+		model := dto.ToModel()
+		assert.NotNil(t, model)
+		assert.NotEqual(t, uuid.Nil, model.Uuid)
+		assert.Equal(t, "newregistrant", model.Username)
+		assert.Equal(t, "registrant@example.com", model.Email)
+		assert.Equal(t, user.ROLE_USER, model.Role)
+	})
+
+	t.Run("DTO role field is ignored and forced to ROLE_USER", func(t *testing.T) {
+		dto := user.RegisterUserDto{
+			Username: "sneakyadmin",
+			Email:    "sneaky@example.com",
+			Password: "mypassword123",
+			Role:     "admin",
+		}
+		model := dto.ToModel()
+		assert.NotNil(t, model)
+		assert.Equal(t, user.ROLE_USER, model.Role)
+	})
+}
