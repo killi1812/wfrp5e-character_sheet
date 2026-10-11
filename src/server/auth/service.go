@@ -54,21 +54,20 @@ func (s *AuthService) Login(identifier, password string) (string, error) {
 	defer cancel()
 
 	var usr user.User
-	err := s.usersColl().FindOne(ctx, bson.M{
-		"$or": []bson.M{
-			{"username": identifier},
-			{"email": identifier},
-		},
-	}).Decode(&usr)
+	err := s.usersColl().FindOne(ctx, bson.M{"username": identifier}).Decode(&usr)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			s.logger.Debugf("User not found Identifier = %s", identifier)
-			return "", cerror.ErrInvalidCredentials
+		if errors.Is(err, mongo.ErrNoDocuments) && identifier != "" {
+			err = s.usersColl().FindOne(ctx, bson.M{"email": identifier}).Decode(&usr)
 		}
-		s.logger.Errorf("Failed to query user, error = %+v", err)
-		return "", err
+		if err != nil {
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				s.logger.Debugf("User not found Identifier = %s", identifier)
+				return "", cerror.ErrInvalidCredentials
+			}
+			s.logger.Errorf("Failed to query user, error = %+v", err)
+			return "", err
+		}
 	}
-
 	if !authUtil.VerifyPassword(usr.PasswordHash, password) {
 		s.logger.Debugf("Invalid password for user Email: %s, uuid: %s", usr.Email, usr.Uuid)
 		return "", cerror.ErrInvalidCredentials
@@ -97,20 +96,20 @@ func (s *AuthService) Login(identifier, password string) (string, error) {
 }
 
 func (s *AuthService) RefreshTokens(accessToken string) (string, error) {
-	token, claims, err := authUtil.ParseToken(accessToken)
+	_, claims, err := authUtil.ParseTokenAllowExpired(accessToken)
 	if err != nil {
 		s.logger.Errorf("Error Parsing claims err = %+v", err)
 		return "", err
 	}
-	if !token.Valid {
-		s.logger.Errorf("Token is not valid")
-		return "", cerror.ErrInvalidTokenFormat
-	}
 
-	parsedUserUuid, err := uuid.Parse(claims.ID)
-	if err != nil {
-		s.logger.Errorf("Error Parsing uuid err = %+v", err)
-		return "", err
+	parsedUserUuid := claims.UserUuid
+	if parsedUserUuid == uuid.Nil {
+		var parseErr error
+		parsedUserUuid, parseErr = uuid.Parse(claims.ID)
+		if parseErr != nil {
+			s.logger.Errorf("Error Parsing uuid err = %+v", parseErr)
+			return "", parseErr
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

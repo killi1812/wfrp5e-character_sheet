@@ -142,7 +142,7 @@ func TestAuthCtn_RefreshToken(t *testing.T) {
 		assert.Equal(t, "new-refreshed-token", tokenResp.AccessToken)
 	})
 
-	t.Run("Refresh service error returns 500", func(t *testing.T) {
+	t.Run("Refresh service error returns 401", func(t *testing.T) {
 		mock := &mockAuthService{
 			refreshTokensFunc: func(token string) (string, error) {
 				return "", errors.New("refresh failed")
@@ -155,7 +155,17 @@ func TestAuthCtn_RefreshToken(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("Missing token on refresh returns 401", func(t *testing.T) {
+		router, _ := setupAuthTestRouter(&mockAuthService{})
+
+		req, _ := http.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 }
 

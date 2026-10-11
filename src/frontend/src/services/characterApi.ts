@@ -60,6 +60,55 @@ class CharacterApiService {
   }
 
   /**
+   * Attempt to refresh the JWT access token using /api/auth/refresh
+   */
+  async refreshToken(): Promise<boolean> {
+    const token = localStorage.getItem('auth_token')
+    if (!token) return false
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (data.accessToken) {
+          localStorage.setItem('auth_token', data.accessToken)
+          return true
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to refresh token:', err)
+    }
+    localStorage.removeItem('auth_token')
+    return false
+  }
+
+  /**
+   * Wrapper around fetch that adds Authorization header and auto-refreshes token on 401
+   */
+  async authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    const headers = {
+      ...((options.headers as Record<string, string>) || {}),
+      ...this.getAuthHeader(),
+    }
+    let response = await fetch(url, { ...options, headers })
+    if (response.status === 401 && this.isAuthenticated()) {
+      const refreshed = await this.refreshToken()
+      if (refreshed) {
+        const retryHeaders = {
+          ...((options.headers as Record<string, string>) || {}),
+          ...this.getAuthHeader(),
+        }
+        response = await fetch(url, { ...options, headers: retryHeaders })
+      }
+    }
+    return response
+  }
+
+  /**
    * Load guest character sheet from browser localStorage
    */
   loadGuestSheet(): CharacterSheetPayload | null {
@@ -125,10 +174,9 @@ class CharacterApiService {
   async getCharacter(uuid?: string): Promise<CharacterSheetPayload> {
     if (this.isAuthenticated() && uuid && uuid !== 'demo' && uuid !== 'mock') {
       try {
-        const response = await fetch(`${this.baseUrl}/${uuid}`, {
+        const response = await this.authenticatedFetch(`${this.baseUrl}/${uuid}`, {
           headers: {
             'Content-Type': 'application/json',
-            ...this.getAuthHeader(),
           },
         })
         if (response.ok) {
@@ -173,11 +221,10 @@ class CharacterApiService {
     const endpoint = isExistingCloudSheet ? `${this.baseUrl}/${targetUuid}` : `${this.baseUrl}/`
     const method = isExistingCloudSheet ? 'PUT' : 'POST'
 
-    const response = await fetch(endpoint, {
+    const response = await this.authenticatedFetch(endpoint, {
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...this.getAuthHeader(),
       },
       body: JSON.stringify(this.adaptToBackend(payload, targetUuid)),
     })
@@ -202,11 +249,8 @@ class CharacterApiService {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/${uuid}`, {
+      const response = await this.authenticatedFetch(`${this.baseUrl}/${uuid}`, {
         method: 'DELETE',
-        headers: {
-          ...this.getAuthHeader(),
-        },
       })
       return response.ok
     } catch (err) {
@@ -221,10 +265,9 @@ class CharacterApiService {
   async listCharacters(): Promise<CharacterSheetSummary[]> {
     if (this.isAuthenticated()) {
       try {
-        const response = await fetch(`${this.baseUrl}/`, {
+        const response = await this.authenticatedFetch(`${this.baseUrl}/`, {
           headers: {
             'Content-Type': 'application/json',
-            ...this.getAuthHeader(),
           },
         })
         if (response.ok) {

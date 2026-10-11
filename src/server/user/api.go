@@ -245,11 +245,15 @@ func (u *UserCtn) getLoggedInUser(c *gin.Context) {
 		return
 	}
 
-	userUuid, err := uuid.Parse(claims.ID)
-	if err != nil {
-		u.logger.Errorf("Error parsing UUID = %s", err)
-		c.AbortWithError(http.StatusBadRequest, err)
-		return
+	userUuid := claims.UserUuid
+	if userUuid == uuid.Nil {
+		var parseErr error
+		userUuid, parseErr = uuid.Parse(claims.ID)
+		if parseErr != nil {
+			u.logger.Errorf("Error parsing UUID = %s", parseErr)
+			c.AbortWithError(http.StatusBadRequest, parseErr)
+			return
+		}
 	}
 
 	user, err := u.UserCrud.Read(userUuid)

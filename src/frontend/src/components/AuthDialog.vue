@@ -80,14 +80,7 @@ async function handleLogin() {
       errorMessage.value = errText ? errText : 'Invalid login credentials'
     }
   } catch (err) {
-    // Offline / Demo fallback
-    const role = loginUsername.value.toLowerCase() === 'admin' ? 'admin' : 'user'
-    emit('login-success', {
-      username: loginUsername.value,
-      role: role,
-      token: 'demo-token',
-    })
-    close()
+    errorMessage.value = 'Failed to connect to server. Please try again.'
   } finally {
     loading.value = false
   }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseToken(t *testing.T) {
@@ -131,6 +132,68 @@ func TestParseToken(t *testing.T) {
 	}
 }
 
+func TestParseTokenAllowExpired(t *testing.T) {
+	app.AccessKey = "test-jwt-key"
+
+	now := time.Now()
+	expiredClaims := auth.Claims{
+		Username: "expired@example.com",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(-time.Hour)),
+			ID:        "expired-uuid",
+		},
+	}
+	expiredToken := jwt.NewWithClaims(jwt.SigningMethodHS256, expiredClaims)
+	expiredTokenString, _ := expiredToken.SignedString([]byte(app.AccessKey))
+	expiredAuthHeader := "Bearer " + expiredTokenString
+
+	token, claims, err := auth.ParseTokenAllowExpired(expiredAuthHeader)
+	if err != nil {
+		t.Fatalf("ParseTokenAllowExpired() returned error for expired token: %v", err)
+	}
+	if claims == nil || claims.Username != "expired@example.com" {
+		t.Fatalf("ParseTokenAllowExpired() claims mismatch: %+v", claims)
+	}
+	if token == nil {
+		t.Fatalf("ParseTokenAllowExpired() returned nil token")
+	}
+
+	// Invalid signature should still error
+	invalidSigTokenString, _ := expiredToken.SignedString([]byte("wrong-key"))
+	_, _, err = auth.ParseTokenAllowExpired("Bearer " + invalidSigTokenString)
+	if err == nil {
+		t.Fatalf("ParseTokenAllowExpired() expected error for invalid signature, got nil")
+	}
+}
+
+func TestParseToken_UserUuid(t *testing.T) {
+	app.AccessKey = "test-jwt-key"
+	expectedUserUuid := uuid.New()
+
+	// Token generated via GenerateTokens has UserUuid populated
+	accToken, _, err := auth.GenerateTokens("test@example.com", "testuser", "user", expectedUserUuid)
+	assert.NoError(t, err)
+
+	_, claims, err := auth.ParseToken("Bearer " + accToken)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedUserUuid, claims.UserUuid)
+
+	// Legacy token with only RegisteredClaims.ID populated gets parsed into UserUuid
+	legacyClaims := auth.Claims{
+		Username: "legacy@example.com",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			ID:        expectedUserUuid.String(),
+		},
+	}
+	legacyToken := jwt.NewWithClaims(jwt.SigningMethodHS256, legacyClaims)
+	legacyTokenString, _ := legacyToken.SignedString([]byte(app.AccessKey))
+
+	_, parsedLegacyClaims, err := auth.ParseToken("Bearer " + legacyTokenString)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedUserUuid, parsedLegacyClaims.UserUuid)
+}
+
 func TestGenerateTokens(t *testing.T) {
 	app.AccessKey = "test-jwt-key"
 	app.RefreshKey = "test-refresh-key"
@@ -140,7 +203,7 @@ func TestGenerateTokens(t *testing.T) {
 		Uuid:     uuid.New(),
 	}
 
-	accessTokenDuration := 5 * time.Minute
+	accessTokenDuration := 24 * time.Hour
 	refreshTokenDuration := 7 * 24 * time.Hour
 
 	tests := []struct {
@@ -195,7 +258,7 @@ func TestGenerateTokens(t *testing.T) {
 					return
 				}
 				if claims, ok := token.Claims.(*auth.Claims); ok {
-					if claims.Username != tt.user.Username || claims.ID != tt.user.Uuid.String() {
+					if claims.Username != tt.user.Username || claims.ID != tt.user.Uuid.String() || claims.UserUuid != tt.user.Uuid {
 						t.Errorf("GenerateTokens() access token claims are incorrect: got = %+v, want = %+v", claims, tt.user)
 					}
 					if !claims.ExpiresAt.After(time.Now().Add(accessTokenDuration-time.Minute)) || !claims.ExpiresAt.Before(time.Now().Add(accessTokenDuration+time.Minute)) {
@@ -213,7 +276,7 @@ func TestGenerateTokens(t *testing.T) {
 					return
 				}
 				if claims, ok := token.Claims.(*auth.Claims); ok {
-					if claims.Username != tt.user.Username || claims.ID != tt.user.Uuid.String() {
+					if claims.Username != tt.user.Username || claims.ID != tt.user.Uuid.String() || claims.UserUuid != tt.user.Uuid {
 						t.Errorf("GenerateTokens() refresh token claims are incorrect: got = %+v, want = %+v", claims, tt.user)
 					}
 					if !claims.ExpiresAt.After(time.Now().Add(refreshTokenDuration-time.Minute)) || !claims.ExpiresAt.Before(time.Now().Add(refreshTokenDuration+time.Minute)) {

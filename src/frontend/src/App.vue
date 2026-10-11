@@ -60,22 +60,34 @@ onMounted(async () => {
   const storedToken = localStorage.getItem('auth_token')
   if (storedToken) {
     try {
-      const res = await fetch('/api/user/my-data', {
+      let res = await fetch('/api/user/my-data', {
         headers: { Authorization: `Bearer ${storedToken}` },
       })
+      if (res.status === 401) {
+        const refreshed = await characterApi.refreshToken()
+        if (refreshed) {
+          const newToken = localStorage.getItem('auth_token')
+          if (newToken) {
+            res = await fetch('/api/user/my-data', {
+              headers: { Authorization: `Bearer ${newToken}` },
+            })
+          }
+        }
+      }
       if (res.ok) {
         const userData = await res.json()
+        const activeToken = localStorage.getItem('auth_token') || storedToken
         currentUser.value = {
           username: userData.username,
           role: userData.role || 'user',
-          token: storedToken,
+          token: activeToken,
           uuid: userData.uuid,
         }
       } else {
         localStorage.removeItem('auth_token')
       }
     } catch {
-      // offline / demo state fallback
+      // network error
     }
   }
 })
@@ -121,7 +133,7 @@ async function uploadGuestSheet() {
 }
 
 async function logout() {
-  if (currentUser.value?.token && currentUser.value.token !== 'demo-token') {
+  if (currentUser.value?.token) {
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"time"
 
 	"github.com/killi1812/wfrp5e-character_sheet/app"
@@ -17,10 +18,11 @@ type Claims struct {
 	Username  string    `json:"username"`
 	Role      string    `json:"role"`
 	TokenUuid uuid.UUID `json:"uuid"`
+	UserUuid  uuid.UUID `json:"userUuid,omitempty"`
 }
 
 const (
-	_ACCESS_TOKEN_DURATION  = 5 * time.Minute
+	_ACCESS_TOKEN_DURATION  = 24 * time.Hour
 	_REFRESH_TOKEN_DURATION = 7 * 24 * time.Hour
 )
 
@@ -38,6 +40,49 @@ func ParseToken(authHeader string) (*jwt.Token, *Claims, error) {
 		return nil, nil, err
 	}
 
+	if claims.UserUuid == uuid.Nil && claims.ID != "" {
+		if parsed, err := uuid.Parse(claims.ID); err == nil {
+			claims.UserUuid = parsed
+		}
+	}
+
+	return token, &claims, nil
+}
+
+// ParseTokenAllowExpired parses a Bearer JWT token, verifying its signature while allowing expired tokens.
+func ParseTokenAllowExpired(authHeader string) (*jwt.Token, *Claims, error) {
+	if len(authHeader) <= len("Bearer ") || authHeader[:len("Bearer ")] != "Bearer " {
+		zap.S().Debugf("token: %s", authHeader)
+		return nil, nil, cerror.ErrInvalidTokenFormat
+	}
+	tokenString := authHeader[len("Bearer "):]
+	var claims Claims
+	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (any, error) {
+		return []byte(app.AccessKey), nil
+	})
+	if err != nil {
+		var validationErr *jwt.ValidationError
+		if errors.As(err, &validationErr) {
+			if validationErr.Errors&jwt.ValidationErrorSignatureInvalid == 0 &&
+				validationErr.Errors&jwt.ValidationErrorMalformed == 0 &&
+				validationErr.Errors&jwt.ValidationErrorUnverifiable == 0 {
+				if claims.UserUuid == uuid.Nil && claims.ID != "" {
+					if parsed, err := uuid.Parse(claims.ID); err == nil {
+						claims.UserUuid = parsed
+					}
+				}
+				return token, &claims, nil
+			}
+		}
+		return nil, nil, err
+	}
+
+	if claims.UserUuid == uuid.Nil && claims.ID != "" {
+		if parsed, err := uuid.Parse(claims.ID); err == nil {
+			claims.UserUuid = parsed
+		}
+	}
+
 	return token, &claims, nil
 }
 
@@ -52,6 +97,7 @@ func GenerateTokens(email, username, role string, userUuid uuid.UUID) (string, s
 		Username:  username,
 		Role:      role,
 		TokenUuid: uuidPair,
+		UserUuid:  userUuid,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(_ACCESS_TOKEN_DURATION)),
 			ID:        userUuid.String(),
@@ -69,6 +115,7 @@ func GenerateTokens(email, username, role string, userUuid uuid.UUID) (string, s
 		Email:     email,
 		Role:      role,
 		TokenUuid: uuidPair,
+		UserUuid:  userUuid,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(_REFRESH_TOKEN_DURATION)),
 			ID:        userUuid.String(),

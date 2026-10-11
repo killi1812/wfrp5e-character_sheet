@@ -15,6 +15,7 @@ import (
 	"github.com/xrash/smetrics"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -48,9 +49,27 @@ func NewUserCrudService() IUserCrudService {
 			db:     db,
 			logger: logger,
 		}
+		ensureUserIndexes(db, logger)
 	})
 
 	return service
+}
+
+func ensureUserIndexes(db *mongo.Database, logger *zap.SugaredLogger) {
+	if db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	indexModel := mongo.IndexModel{
+		Keys:    bson.D{{Key: "username", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	}
+	_, err := db.Collection("users").Indexes().CreateOne(ctx, indexModel)
+	if err != nil {
+		logger.Warnf("Could not create unique username index: %v", err)
+	}
 }
 
 func (u *UserCrudService) usersColl() *mongo.Collection {
@@ -158,6 +177,9 @@ func (u *UserCrudService) Create(user *User, password string) (*User, error) {
 	}
 	res, err := u.usersColl().InsertOne(ctx, user)
 	if err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			return nil, errors.New("username already exists")
+		}
 		return nil, err
 	}
 	if oid, ok := res.InsertedID.(bson.ObjectID); ok {

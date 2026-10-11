@@ -32,7 +32,7 @@ func (c *AuthCtn) RegisterEndpoints(api *gin.RouterGroup) {
 	group := api.Group("/auth")
 
 	group.POST("/login", c.login)
-	group.POST("/refresh", authUtil.Protect(), c.refreshToken)
+	group.POST("/refresh", c.refreshToken)
 	group.POST("/logout", authUtil.Protect(), c.logout)
 }
 
@@ -76,10 +76,14 @@ func (l *AuthCtn) login(c *gin.Context) {
 //	@Router			/auth/refresh [post]
 func (l *AuthCtn) refreshToken(c *gin.Context) {
 	tokenStr := c.Request.Header.Get("Authorization")
+	if tokenStr == "" {
+		c.JSON(http.StatusUnauthorized, "Missing token")
+		return
+	}
 	token, err := l.auth.RefreshTokens(tokenStr)
 	if err != nil {
 		l.logger.Errorf("Refresh failed err = %w", err)
-		c.JSON(http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusUnauthorized, err.Error())
 		return
 	}
 

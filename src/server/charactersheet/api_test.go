@@ -336,6 +336,34 @@ func TestCharacterSheetCtn_Update(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
+	t.Run("Update sheet keeps existing owner even if payload specifies another userUuid", func(t *testing.T) {
+		var updatedSheet *CharacterSheet
+		mock := &mockSheetService{
+			readFunc: func(id uuid.UUID) (*CharacterSheet, error) {
+				return &CharacterSheet{Uuid: id, UserUuid: ownerUuid, Name: "Old"}, nil
+			},
+			updateFunc: func(id uuid.UUID, s *CharacterSheet) (*CharacterSheet, error) {
+				s.Uuid = id
+				updatedSheet = s
+				return s, nil
+			},
+		}
+		router, _ := setupTestRouter(mock)
+
+		payload := CharacterSheet{Name: "Attempt Ownership Hijack", UserUuid: otherUuid}
+		body, _ := json.Marshal(payload)
+
+		req, _ := http.NewRequest(http.MethodPut, "/api/character-sheets/"+sheetUuid.String(), bytes.NewReader(body))
+		req.Header.Set("Authorization", generateAuthHeader(t, ownerUuid, "user"))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.NotNil(t, updatedSheet)
+		assert.Equal(t, ownerUuid, updatedSheet.UserUuid)
+	})
+
 	t.Run("Other user cannot update sheet (403)", func(t *testing.T) {
 		mock := &mockSheetService{
 			readFunc: func(id uuid.UUID) (*CharacterSheet, error) {

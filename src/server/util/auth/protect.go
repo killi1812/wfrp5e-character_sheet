@@ -35,6 +35,10 @@ func Protect(roles ...string) gin.HandlerFunc {
 			return
 		}
 
+		c.Set("claims", claims)
+		c.Set("userUuid", claims.UserUuid)
+		c.Set("role", claims.Role)
+
 		c.Next()
 	}
 }

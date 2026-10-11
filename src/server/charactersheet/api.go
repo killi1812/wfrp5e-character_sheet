@@ -40,11 +40,21 @@ func (c *CharacterSheetCtn) RegisterEndpoints(api *gin.RouterGroup) {
 }
 
 func getUserInfo(ctx *gin.Context) (uuid.UUID, string) {
+	if val, exists := ctx.Get("claims"); exists {
+		if claims, ok := val.(*auth.Claims); ok {
+			return claims.UserUuid, claims.Role
+		}
+	}
+	if val, exists := ctx.Get("userUuid"); exists {
+		if userUuid, ok := val.(uuid.UUID); ok {
+			role, _ := ctx.Get("role")
+			roleStr, _ := role.(string)
+			return userUuid, roleStr
+		}
+	}
 	if authHeader := ctx.GetHeader("Authorization"); authHeader != "" {
-		if _, claims, err := auth.ParseToken(authHeader); err == nil && claims.ID != "" {
-			if parsedUserUuid, err := uuid.Parse(claims.ID); err == nil {
-				return parsedUserUuid, claims.Role
-			}
+		if _, claims, err := auth.ParseToken(authHeader); err == nil {
+			return claims.UserUuid, claims.Role
 		}
 	}
 	return uuid.Nil, ""
@@ -71,7 +81,10 @@ func (c *CharacterSheetCtn) getAll(ctx *gin.Context) {
 
 func (c *CharacterSheetCtn) hasAccess(ctx *gin.Context, sheetOwner uuid.UUID) bool {
 	userUuid, role := getUserInfo(ctx)
-	if role != "admin" && sheetOwner != uuid.Nil && userUuid != uuid.Nil && sheetOwner != userUuid {
+	if role == "admin" {
+		return true
+	}
+	if sheetOwner != uuid.Nil && (userUuid == uuid.Nil || sheetOwner != userUuid) {
 		ctx.AbortWithStatus(http.StatusForbidden)
 		return false
 	}
@@ -141,9 +154,7 @@ func (c *CharacterSheetCtn) update(ctx *gin.Context) {
 		return
 	}
 
-	if sheet.UserUuid == uuid.Nil {
-		sheet.UserUuid = existing.UserUuid
-	}
+	sheet.UserUuid = existing.UserUuid
 
 	updated, err := c.service.Update(sheetUuid, &sheet)
 	if err != nil {
