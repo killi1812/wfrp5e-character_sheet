@@ -164,6 +164,31 @@ func TestParseTokenAllowExpired(t *testing.T) {
 	if err == nil {
 		t.Fatalf("ParseTokenAllowExpired() expected error for invalid signature, got nil")
 	}
+
+	// Missing / invalid format
+	_, _, err = auth.ParseTokenAllowExpired("invalid")
+	assert.Error(t, err)
+
+	_, _, err = auth.ParseTokenAllowExpired("Bearer short")
+	assert.Error(t, err)
+
+	// Malformed
+	_, _, err = auth.ParseTokenAllowExpired("Bearer not.a.valid.jwt")
+	assert.Error(t, err)
+
+	// Valid non-expired token
+	validClaims := auth.Claims{
+		Username: "valid@example.com",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
+			ID:        "valid-uuid",
+		},
+	}
+	validTok := jwt.NewWithClaims(jwt.SigningMethodHS256, validClaims)
+	validTokStr, _ := validTok.SignedString([]byte(app.AccessKey))
+	_, vClaims, err := auth.ParseTokenAllowExpired("Bearer " + validTokStr)
+	assert.NoError(t, err)
+	assert.Equal(t, "valid@example.com", vClaims.Username)
 }
 
 func TestParseToken_UserUuid(t *testing.T) {
@@ -203,8 +228,8 @@ func TestGenerateTokens(t *testing.T) {
 		Uuid:     uuid.New(),
 	}
 
-	accessTokenDuration := 24 * time.Hour
-	refreshTokenDuration := 7 * 24 * time.Hour
+	accessTokenDuration := 15 * time.Minute
+	refreshTokenDuration := 30 * 24 * time.Hour
 
 	tests := []struct {
 		name                     string
@@ -238,7 +263,8 @@ func TestGenerateTokens(t *testing.T) {
 				role = string(tt.user.Role)
 				userUuid = tt.user.Uuid
 			}
-			gotAccessToken, gotRefreshToken, err := auth.GenerateTokens(email, username, role, userUuid)
+			customSessionUuid := uuid.New()
+			gotAccessToken, gotRefreshToken, err := auth.GenerateTokens(email, username, role, userUuid, customSessionUuid)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GenerateTokens() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -258,7 +284,7 @@ func TestGenerateTokens(t *testing.T) {
 					return
 				}
 				if claims, ok := token.Claims.(*auth.Claims); ok {
-					if claims.Username != tt.user.Username || claims.ID != tt.user.Uuid.String() || claims.UserUuid != tt.user.Uuid {
+					if claims.Username != tt.user.Username || claims.ID != tt.user.Uuid.String() || claims.UserUuid != tt.user.Uuid || claims.SessionUuid != customSessionUuid {
 						t.Errorf("GenerateTokens() access token claims are incorrect: got = %+v, want = %+v", claims, tt.user)
 					}
 					if !claims.ExpiresAt.After(time.Now().Add(accessTokenDuration-time.Minute)) || !claims.ExpiresAt.Before(time.Now().Add(accessTokenDuration+time.Minute)) {
@@ -276,7 +302,7 @@ func TestGenerateTokens(t *testing.T) {
 					return
 				}
 				if claims, ok := token.Claims.(*auth.Claims); ok {
-					if claims.Username != tt.user.Username || claims.ID != tt.user.Uuid.String() || claims.UserUuid != tt.user.Uuid {
+					if claims.Username != tt.user.Username || claims.ID != tt.user.Uuid.String() || claims.UserUuid != tt.user.Uuid || claims.SessionUuid != customSessionUuid {
 						t.Errorf("GenerateTokens() refresh token claims are incorrect: got = %+v, want = %+v", claims, tt.user)
 					}
 					if !claims.ExpiresAt.After(time.Now().Add(refreshTokenDuration-time.Minute)) || !claims.ExpiresAt.Before(time.Now().Add(refreshTokenDuration+time.Minute)) {
@@ -289,3 +315,57 @@ func TestGenerateTokens(t *testing.T) {
 		})
 	}
 }
+
+func TestHashToken(t *testing.T) {
+	t1 := "sample-token-123"
+	h1 := auth.HashToken(t1)
+	h2 := auth.HashToken(t1)
+	assert.NotEmpty(t, h1)
+	assert.Equal(t, h1, h2)
+	assert.NotEqual(t, h1, auth.HashToken("different-token"))
+}
+
+func TestParseRefreshToken(t *testing.T) {
+	app.AccessKey = "test-access-key"
+	app.RefreshKey = "test-refresh-key"
+
+	userUuid := uuid.New()
+	sessionUuid := uuid.New()
+	_, refreshToken, err := auth.GenerateTokens("u@test.com", "u", "user", userUuid, sessionUuid)
+	assert.NoError(t, err)
+
+	t.Run("Valid raw refresh token", func(t *testing.T) {
+		token, claims, err := auth.ParseRefreshToken(refreshToken)
+		assert.NoError(t, err)
+		assert.NotNil(t, token)
+		assert.NotNil(t, claims)
+		assert.Equal(t, userUuid, claims.UserUuid)
+		assert.Equal(t, sessionUuid, claims.SessionUuid)
+	})
+
+	t.Run("Valid Bearer prefixed refresh token", func(t *testing.T) {
+		token, claims, err := auth.ParseRefreshToken("Bearer " + refreshToken)
+		assert.NoError(t, err)
+		assert.NotNil(t, token)
+		assert.NotNil(t, claims)
+		assert.Equal(t, userUuid, claims.UserUuid)
+	})
+
+	t.Run("Empty refresh token", func(t *testing.T) {
+		_, _, err := auth.ParseRefreshToken("")
+		assert.ErrorIs(t, err, cerror.ErrInvalidTokenFormat)
+	})
+
+	t.Run("Malformed refresh token", func(t *testing.T) {
+		_, _, err := auth.ParseRefreshToken("malformed-token")
+		assert.Error(t, err)
+	})
+
+	t.Run("Token signed with wrong key", func(t *testing.T) {
+		// access token is signed with AccessKey, not RefreshKey
+		accessToken, _, _ := auth.GenerateTokens("u@test.com", "u", "user", userUuid, sessionUuid)
+		_, _, err := auth.ParseRefreshToken(accessToken)
+		assert.Error(t, err)
+	})
+}
+

@@ -33,3 +33,13 @@ func HandleServiceError(c *gin.Context, err error, notFoundErr error) bool {
 	c.AbortWithError(http.StatusInternalServerError, err)
 	return true
 }
+
+// ErrorResponse represents the standardized error response payload.
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// RespondWithError aborts the request context with the given HTTP status code and standard error response payload.
+func RespondWithError(c *gin.Context, statusCode int, message string) {
+	c.AbortWithStatusJSON(statusCode, ErrorResponse{Error: message})
+}

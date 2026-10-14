@@ -2,11 +2,14 @@ package auth
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/killi1812/wfrp5e-character_sheet/app"
 	authUtil "github.com/killi1812/wfrp5e-character_sheet/util/auth"
+	"github.com/killi1812/wfrp5e-character_sheet/util/ginutil"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -31,89 +34,180 @@ func NewAuthCtn() app.Controller {
 func (c *AuthCtn) RegisterEndpoints(api *gin.RouterGroup) {
 	group := api.Group("/auth")
 
+	// Public routes
 	group.POST("/login", c.login)
 	group.POST("/refresh", c.refreshToken)
-	group.POST("/logout", authUtil.Protect(), c.logout)
+
+	// Protected routes
+	protected := group.Group("", authUtil.Protect())
+	protected.POST("/logout", c.logout)
+	protected.POST("/logout-all", c.logoutAll)
+	protected.GET("/sessions", c.listSessions)
+	protected.DELETE("/sessions/:uuid", c.revokeSession)
 }
 
-// Login godoc
-//
-//	@Summary		User login
-//	@Description	Authenticates a user and returns access and refresh tokens
-//	@Tags			auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			loginDto	body		LoginDto	true	"Login credentials"
-//	@Success		200			{object}	TokenDto
-//	@Router			/auth/login [post]
+func setRefreshTokenCookie(c *gin.Context, refreshToken string) {
+	secure := gin.Mode() == gin.ReleaseMode || c.Request.TLS != nil
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("refresh_token", refreshToken, int(30*24*time.Hour/time.Second), "/api/auth", "", secure, true)
+}
+
+func clearRefreshTokenCookie(c *gin.Context) {
+	secure := gin.Mode() == gin.ReleaseMode || c.Request.TLS != nil
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("refresh_token", "", -1, "/api/auth", "", secure, true)
+}
+
+func getContextAuth(c *gin.Context) (uuid.UUID, uuid.UUID) {
+	var userUuid, sessionUuid uuid.UUID
+	if val, exists := c.Get("userUuid"); exists {
+		if u, ok := val.(uuid.UUID); ok {
+			userUuid = u
+		}
+	}
+	if val, exists := c.Get("sessionUuid"); exists {
+		if s, ok := val.(uuid.UUID); ok {
+			sessionUuid = s
+		}
+	}
+	if userUuid == uuid.Nil || sessionUuid == uuid.Nil {
+		if val, exists := c.Get("claims"); exists {
+			if claims, ok := val.(*authUtil.Claims); ok {
+				if userUuid == uuid.Nil {
+					userUuid = claims.UserUuid
+				}
+				if sessionUuid == uuid.Nil {
+					sessionUuid = claims.SessionUuid
+				}
+			}
+		}
+	}
+	return userUuid, sessionUuid
+}
+
 func (l *AuthCtn) login(c *gin.Context) {
 	var loginDto LoginDto
-
 	if err := c.BindJSON(&loginDto); err != nil {
-		l.logger.Errorf("Invalid login request err = %+v", err)
+		l.logger.Errorf("Invalid login request: %v", err)
+		ginutil.RespondWithError(c, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	accessToken, err := l.auth.Login(loginDto.Username, loginDto.Password)
+	userAgent := c.Request.UserAgent()
+	clientIP := c.ClientIP()
+
+	accessToken, refreshToken, sessionUuid, err := l.auth.Login(
+		loginDto.Username,
+		loginDto.Password,
+		loginDto.SessionId,
+		userAgent,
+		clientIP,
+	)
 	if err != nil {
-		l.logger.Errorf("Login failed err = %+v", err)
-		c.JSON(http.StatusUnauthorized, err.Error())
+		l.logger.Debugf("Login failed: %v", err)
+		ginutil.RespondWithError(c, http.StatusUnauthorized, "Invalid login credentials")
 		return
 	}
+
+	setRefreshTokenCookie(c, refreshToken)
 
 	c.JSON(http.StatusOK, TokenDto{
 		AccessToken: accessToken,
+		SessionId:   sessionUuid,
 	})
 }
 
-// Refresh godoc
-//
-//	@Summary		Refresh Access Token
-//	@Description	Generates a new access token using a valid refresh token
-//	@Tags			auth
-//	@Produce		json
-//	@Success		200	{object}	TokenDto
-//	@Router			/auth/refresh [post]
 func (l *AuthCtn) refreshToken(c *gin.Context) {
-	tokenStr := c.Request.Header.Get("Authorization")
+	var tokenStr string
+	if cookieVal, err := c.Cookie("refresh_token"); err == nil && cookieVal != "" {
+		tokenStr = cookieVal
+	} else if authHeader := c.Request.Header.Get("Authorization"); authHeader != "" {
+		tokenStr = authHeader
+	}
+
 	if tokenStr == "" {
-		c.JSON(http.StatusUnauthorized, "Missing token")
+		ginutil.RespondWithError(c, http.StatusUnauthorized, "Missing refresh token")
 		return
 	}
-	token, err := l.auth.RefreshTokens(tokenStr)
+
+	userAgent := c.Request.UserAgent()
+	clientIP := c.ClientIP()
+
+	newAccessToken, newRefreshToken, sessionUuid, err := l.auth.RefreshTokens(tokenStr, userAgent, clientIP)
 	if err != nil {
-		l.logger.Errorf("Refresh failed err = %w", err)
-		c.JSON(http.StatusUnauthorized, err.Error())
+		l.logger.Warnf("Refresh failed: %v", err)
+		clearRefreshTokenCookie(c)
+		ginutil.RespondWithError(c, http.StatusUnauthorized, err.Error())
 		return
 	}
+
+	setRefreshTokenCookie(c, newRefreshToken)
 
 	c.JSON(http.StatusOK, TokenDto{
-		AccessToken: token,
+		AccessToken: newAccessToken,
+		SessionId:   sessionUuid,
 	})
 }
 
-// Logout godoc
-//
-//	@Summary		User Logout
-//	@Description	Logs out current user session
-//	@Tags			auth
-//	@Produce		json
-//	@Success		200
-//	@Router			/auth/logout [post]
 func (l *AuthCtn) logout(c *gin.Context) {
-	_, claims, err := authUtil.ParseToken(c.Request.Header.Get("Authorization"))
-	if err != nil {
-		l.logger.Errorf("Logout failed err = %w", err)
-		c.JSON(http.StatusInternalServerError, err.Error())
+	userUuid, sessionUuid := getContextAuth(c)
+	if userUuid != uuid.Nil && sessionUuid != uuid.Nil {
+		_ = l.auth.LogoutCurrent(userUuid, sessionUuid)
+	}
+
+	clearRefreshTokenCookie(c)
+	c.Status(http.StatusNoContent)
+}
+
+func (l *AuthCtn) logoutAll(c *gin.Context) {
+	userUuid, _ := getContextAuth(c)
+	if userUuid != uuid.Nil {
+		_ = l.auth.LogoutAll(userUuid)
+	}
+
+	clearRefreshTokenCookie(c)
+	c.Status(http.StatusNoContent)
+}
+
+func (l *AuthCtn) listSessions(c *gin.Context) {
+	userUuid, currentSessionUuid := getContextAuth(c)
+	if userUuid == uuid.Nil {
+		ginutil.RespondWithError(c, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	err = l.auth.Logout(claims.ID)
+	sessions, err := l.auth.ListSessions(userUuid, currentSessionUuid)
 	if err != nil {
-		l.logger.Errorf("Logout failed err = %w", err)
-		c.JSON(http.StatusInternalServerError, err.Error())
+		l.logger.Errorf("Failed to list sessions: %v", err)
+		ginutil.RespondWithError(c, http.StatusInternalServerError, "Failed to retrieve sessions")
 		return
 	}
 
-	c.AbortWithStatus(http.StatusOK)
+	c.JSON(http.StatusOK, sessions)
+}
+
+func (l *AuthCtn) revokeSession(c *gin.Context) {
+	userUuid, currentSessionUuid := getContextAuth(c)
+	if userUuid == uuid.Nil {
+		ginutil.RespondWithError(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	targetSessionUuid, ok := ginutil.ParseUUIDParam(c, "uuid")
+	if !ok {
+		return
+	}
+
+	err := l.auth.RevokeSession(userUuid, targetSessionUuid)
+	if err != nil {
+		l.logger.Errorf("Failed to revoke session: %v", err)
+		ginutil.RespondWithError(c, http.StatusInternalServerError, "Failed to revoke session")
+		return
+	}
+
+	if targetSessionUuid == currentSessionUuid {
+		clearRefreshTokenCookie(c)
+	}
+
+	c.Status(http.StatusNoContent)
 }

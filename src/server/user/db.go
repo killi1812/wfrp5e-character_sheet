@@ -50,6 +50,7 @@ func NewUserCrudService() IUserCrudService {
 			logger: logger,
 		}
 		ensureUserIndexes(db, logger)
+		ensureSessionIndexes(db, logger)
 	})
 
 	return service
@@ -69,6 +70,32 @@ func ensureUserIndexes(db *mongo.Database, logger *zap.SugaredLogger) {
 	_, err := db.Collection("users").Indexes().CreateOne(ctx, indexModel)
 	if err != nil {
 		logger.Warnf("Could not create unique username index: %v", err)
+	}
+}
+
+func ensureSessionIndexes(db *mongo.Database, logger *zap.SugaredLogger) {
+	if db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	models := []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "session_uuid", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys: bson.D{{Key: "user_uuid", Value: 1}},
+		},
+		{
+			Keys:    bson.D{{Key: "expires_at", Value: 1}},
+			Options: options.Index().SetExpireAfterSeconds(0),
+		},
+	}
+	_, err := db.Collection("sessions").Indexes().CreateMany(ctx, models)
+	if err != nil {
+		logger.Warnf("Could not create session indexes: %v", err)
 	}
 }
 

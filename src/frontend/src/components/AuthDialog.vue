@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { characterApi } from '../services/characterApi'
 
 const props = defineProps<{
   modelValue: boolean
@@ -37,13 +38,20 @@ async function handleLogin() {
   errorMessage.value = ''
 
   try {
+    const reqBody: { username: string; password: string; sessionId?: string } = {
+      username: loginUsername.value,
+      password: loginPassword.value,
+    }
+    const storedSession = characterApi.getSessionId()
+    if (storedSession) {
+      reqBody.sessionId = storedSession
+    }
+
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: loginUsername.value,
-        password: loginPassword.value,
-      }),
+      credentials: 'include',
+      body: JSON.stringify(reqBody),
     })
 
     if (res.ok) {
@@ -51,6 +59,9 @@ async function handleLogin() {
       const token = data.accessToken
       if (token) {
         localStorage.setItem('auth_token', token)
+      }
+      if (data.sessionId) {
+        characterApi.setSessionId(data.sessionId)
       }
 
       // Fetch authenticated user profile data
@@ -76,8 +87,8 @@ async function handleLogin() {
       }
       close()
     } else {
-      const errText = await res.text()
-      errorMessage.value = errText ? errText : 'Invalid login credentials'
+      const errData = await res.json().catch(() => null)
+      errorMessage.value = errData?.error || 'Invalid login credentials'
     }
   } catch (err) {
     errorMessage.value = 'Failed to connect to server. Please try again.'

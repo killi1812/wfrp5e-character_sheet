@@ -26,6 +26,10 @@ import SheetSpellsMutationsBlock from '../components/sheet/containers/SheetSpell
 import SheetAmbitionsNotesBlock from '../components/sheet/containers/SheetAmbitionsNotesBlock.vue'
 import SheetMountBlock from '../components/sheet/containers/SheetMountBlock.vue'
 
+defineProps<{
+  currentUser?: { username: string; role: string; token: string; uuid?: string } | null
+}>()
+
 const emit = defineEmits<{
   (e: 'openMenu'): void
 }>()
@@ -388,8 +392,8 @@ defineExpose({
 <template>
   <main class="wfrp-sheet-body pa-3 pa-md-5">
 
-    <SheetHeaderBlock :character="character" :is-dirty="isDirty" :is-saving="isSaving" @open-menu="emit('openMenu')"
-      @save="saveSheet" />
+    <SheetHeaderBlock :character="character" :is-dirty="isDirty" :is-saving="isSaving"
+      :username="currentUser?.username" @open-menu="emit('openMenu')" @save="saveSheet" />
     <SheetCharacteristicsBlock :character="character" :get-char-current="getCharCurrent"
       :agility-penalty="agilityPenalty" />
     <SheetVitalsBlock :character="character" :computed-walk="computedWalk" :computed-run="computedRun"

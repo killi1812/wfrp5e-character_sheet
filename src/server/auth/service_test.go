@@ -73,31 +73,62 @@ func TestAuthService(t *testing.T) {
 	_, err = db.Collection("users").InsertOne(ctx, testUser)
 	assert.NoError(t, err)
 
-	t.Run("Login with valid username", func(t *testing.T) {
-		token, err := svc.Login("tester", "validPassword123")
-		assert.NoError(t, err)
-		assert.NotEmpty(t, token)
+	var activeSessionUuid uuid.UUID
+	var activeRefreshToken string
 
-		// Verify session was inserted
+	t.Run("Login with valid username creates new session", func(t *testing.T) {
+		accessToken, refreshToken, sessionUuid, err := svc.Login("tester", "validPassword123", nil, "Mozilla/5.0", "127.0.0.1")
+		assert.NoError(t, err)
+		assert.NotEmpty(t, accessToken)
+		assert.NotEmpty(t, refreshToken)
+		assert.NotEqual(t, uuid.Nil, sessionUuid)
+
+		activeSessionUuid = sessionUuid
+		activeRefreshToken = refreshToken
+
+		// Verify session was inserted in MongoDB
 		var session user.Session
-		findErr := db.Collection("sessions").FindOne(ctx, bson.M{"user_uuid": userUuid}).Decode(&session)
+		findErr := db.Collection("sessions").FindOne(ctx, bson.M{"session_uuid": sessionUuid}).Decode(&session)
 		assert.NoError(t, findErr)
-		assert.NotEmpty(t, session.RefreshToken)
+		assert.Equal(t, userUuid, session.UserUuid)
+		assert.Equal(t, authUtil.HashToken(refreshToken), session.RefreshTokenHash)
+		assert.Equal(t, "Mozilla/5.0", session.UserAgent)
+		assert.Equal(t, "127.0.0.1", session.ClientIP)
+		assert.WithinDuration(t, time.Now().Add(30*24*time.Hour), session.ExpiresAt, 5*time.Second)
 	})
 
-	t.Run("Login with valid email", func(t *testing.T) {
-		token, err := svc.Login("tester@example.com", "validPassword123")
+	t.Run("Login with existing requestedSession reuses session UUID", func(t *testing.T) {
+		accessToken, refreshToken, sessionUuid, err := svc.Login("tester", "validPassword123", &activeSessionUuid, "UpdatedAgent/1.0", "192.168.1.100")
 		assert.NoError(t, err)
-		assert.NotEmpty(t, token)
+		assert.NotEmpty(t, accessToken)
+		assert.NotEmpty(t, refreshToken)
+		assert.Equal(t, activeSessionUuid, sessionUuid)
+
+		activeRefreshToken = refreshToken
+
+		// Verify session was updated in MongoDB
+		var session user.Session
+		findErr := db.Collection("sessions").FindOne(ctx, bson.M{"session_uuid": activeSessionUuid}).Decode(&session)
+		assert.NoError(t, findErr)
+		assert.Equal(t, "UpdatedAgent/1.0", session.UserAgent)
+		assert.Equal(t, "192.168.1.100", session.ClientIP)
+		assert.Equal(t, authUtil.HashToken(refreshToken), session.RefreshTokenHash)
+	})
+
+	t.Run("Login with non-matching requestedSession creates new session UUID", func(t *testing.T) {
+		randomSessionID := uuid.New()
+		_, _, sessionUuid, err := svc.Login("tester", "validPassword123", &randomSessionID, "Agent/2.0", "10.0.0.1")
+		assert.NoError(t, err)
+		assert.NotEqual(t, randomSessionID, sessionUuid)
 	})
 
 	t.Run("Login with wrong password returns ErrInvalidCredentials", func(t *testing.T) {
-		_, err := svc.Login("tester", "wrongPassword")
+		_, _, _, err := svc.Login("tester", "wrongPassword", nil, "", "")
 		assert.ErrorIs(t, err, cerror.ErrInvalidCredentials)
 	})
 
-	t.Run("Login with unknown identifier returns ErrInvalidCredentials", func(t *testing.T) {
-		_, err := svc.Login("nonexistent", "validPassword123")
+	t.Run("Login with unknown username returns ErrInvalidCredentials", func(t *testing.T) {
+		_, _, _, err := svc.Login("nonexistent", "validPassword123", nil, "", "")
 		assert.ErrorIs(t, err, cerror.ErrInvalidCredentials)
 	})
 
@@ -110,90 +141,194 @@ func TestAuthService(t *testing.T) {
 			Role:         user.ROLE_USER,
 		}
 		_, _ = db.Collection("users").InsertOne(ctx, nilUser)
-		_, err := svc.Login("niluser", "validPassword123")
+		_, _, _, err := svc.Login("niluser", "validPassword123", nil, "", "")
 		assert.Error(t, err)
 	})
 
-	t.Run("RefreshTokens with valid token", func(t *testing.T) {
-		tok, err := svc.Login("tester", "validPassword123")
+	t.Run("RefreshTokens rotates token successfully", func(t *testing.T) {
+		newAccessToken, newRefreshToken, sessionUuid, err := svc.RefreshTokens(activeRefreshToken, "RotatedAgent/1.0", "127.0.0.1")
 		assert.NoError(t, err)
+		assert.NotEmpty(t, newAccessToken)
+		assert.NotEmpty(t, newRefreshToken)
+		assert.NotEqual(t, activeRefreshToken, newRefreshToken)
+		assert.Equal(t, activeSessionUuid, sessionUuid)
 
-		newToken, err := svc.RefreshTokens("Bearer " + tok)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, newToken)
+		// Verify session hash updated in MongoDB
+		var session user.Session
+		findErr := db.Collection("sessions").FindOne(ctx, bson.M{"session_uuid": activeSessionUuid}).Decode(&session)
+		assert.NoError(t, findErr)
+		assert.Equal(t, authUtil.HashToken(newRefreshToken), session.RefreshTokenHash)
+
+		// Replay attack test: calling RefreshTokens again with the OLD token MUST fail and terminate session
+		_, _, _, replayErr := svc.RefreshTokens(activeRefreshToken, "AttackerAgent/1.0", "6.6.6.6")
+		assert.Error(t, replayErr)
+		assert.Contains(t, replayErr.Error(), "replay attack detected")
+
+		// Session should have been deleted by replay protection
+		findErrAfterReplay := db.Collection("sessions").FindOne(ctx, bson.M{"session_uuid": activeSessionUuid}).Decode(&session)
+		assert.ErrorIs(t, findErrAfterReplay, mongo.ErrNoDocuments)
 	})
 
 	t.Run("RefreshTokens with malformed token", func(t *testing.T) {
-		_, err := svc.RefreshTokens("invalid-token")
-		assert.Error(t, err)
+		_, _, _, err := svc.RefreshTokens("not-a-valid-jwt", "", "")
+		assert.ErrorIs(t, err, cerror.ErrInvalidTokenFormat)
 	})
 
-	t.Run("RefreshTokens with invalid uuid in token claims", func(t *testing.T) {
-		// create token with bad ID
+	t.Run("RefreshTokens with missing sessionUuid or userUuid", func(t *testing.T) {
 		claims := &authUtil.Claims{
-			RegisteredClaims: jwt.RegisteredClaims{ID: "not-a-uuid"},
+			UserUuid: uuid.Nil,
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			},
 		}
-		tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		signed, _ := tok.SignedString([]byte(app.AccessKey))
-		_, err := svc.RefreshTokens("Bearer " + signed)
-		assert.Error(t, err)
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		signed, _ := token.SignedString([]byte(app.RefreshKey))
+
+		_, _, _, err := svc.RefreshTokens(signed, "", "")
+		assert.ErrorIs(t, err, cerror.ErrInvalidTokenFormat)
 	})
 
-	t.Run("RefreshTokens with unknown user session", func(t *testing.T) {
-		unknownUuid := uuid.New()
-		tok, _, _ := authUtil.GenerateTokens("unknown@test.com", "unknown", "user", unknownUuid)
-		_, err := svc.RefreshTokens("Bearer " + tok)
-		assert.Error(t, err)
-	})
+	t.Run("RefreshTokens with session not in MongoDB", func(t *testing.T) {
+		orphanSessionUuid := uuid.New()
+		_, refreshToken, err := authUtil.GenerateTokens("orphan@test.com", "orphan", "user", userUuid, orphanSessionUuid)
+		assert.NoError(t, err)
 
-	t.Run("RefreshTokens with corrupt refresh token in session", func(t *testing.T) {
-		corruptUserUuid := uuid.New()
-		tok, _, _ := authUtil.GenerateTokens("c@test.com", "cuser", "user", corruptUserUuid)
-		_, _ = db.Collection("sessions").InsertOne(ctx, user.Session{
-			UserUuid:     corruptUserUuid,
-			RefreshToken: "corrupt.refresh.token",
-		})
-		_, err := svc.RefreshTokens("Bearer " + tok)
-		assert.Error(t, err)
-	})
-
-	t.Run("RefreshTokens with mismatched token uuid", func(t *testing.T) {
-		mismatchUuid := uuid.New()
-		tok, _, _ := authUtil.GenerateTokens("m@test.com", "muser", "user", mismatchUuid)
-		// Insert session with a different token uuid
-		_, otherRefresh, _ := authUtil.GenerateTokens("m@test.com", "muser", "user", mismatchUuid)
-		_, _ = db.Collection("sessions").InsertOne(ctx, user.Session{
-			UserUuid:     mismatchUuid,
-			RefreshToken: otherRefresh,
-		})
-		_, err := svc.RefreshTokens("Bearer " + tok)
-		assert.Error(t, err)
+		_, _, _, err = svc.RefreshTokens(refreshToken, "", "")
+		assert.ErrorIs(t, err, cerror.ErrInvalidTokenFormat)
 	})
 
 	t.Run("RefreshTokens with user not in users collection", func(t *testing.T) {
-		orphanUuid := uuid.New()
-		tok, ref, _ := authUtil.GenerateTokens("o@test.com", "ouser", "user", orphanUuid)
-		_, _ = db.Collection("sessions").InsertOne(ctx, user.Session{
-			UserUuid:     orphanUuid,
-			RefreshToken: ref,
-		})
-		_, err := svc.RefreshTokens("Bearer " + tok)
-		assert.Error(t, err)
-	})
-
-	t.Run("Logout removes user session", func(t *testing.T) {
-		err := svc.Logout(userUuid.String())
+		ghostUserUuid := uuid.New()
+		ghostSessionUuid := uuid.New()
+		_, refreshToken, err := authUtil.GenerateTokens("ghost@test.com", "ghost", "user", ghostUserUuid, ghostSessionUuid)
 		assert.NoError(t, err)
 
-		// Session should be gone
-		var session user.Session
-		findErr := db.Collection("sessions").FindOne(ctx, bson.M{"user_uuid": userUuid}).Decode(&session)
-		assert.Error(t, findErr)
+		// Insert session for ghost user
+		_, err = db.Collection("sessions").InsertOne(ctx, user.Session{
+			SessionUuid:      ghostSessionUuid,
+			UserUuid:         ghostUserUuid,
+			RefreshTokenHash: authUtil.HashToken(refreshToken),
+			ExpiresAt:        time.Now().Add(time.Hour),
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = svc.RefreshTokens(refreshToken, "", "")
+		assert.Error(t, err)
 	})
 
-	t.Run("Logout with invalid uuid string", func(t *testing.T) {
-		err := svc.Logout("not-a-uuid")
-		assert.Error(t, err)
+	t.Run("ListSessions returns sessions with IsCurrent", func(t *testing.T) {
+		session1Uuid := uuid.New()
+		session2Uuid := uuid.New()
+
+		_, _ = db.Collection("sessions").InsertOne(ctx, user.Session{
+			SessionUuid:      session1Uuid,
+			UserUuid:         userUuid,
+			RefreshTokenHash: "hash1",
+			UserAgent:        "Device1",
+			ClientIP:         "1.1.1.1",
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+			ExpiresAt:        time.Now().Add(time.Hour),
+		})
+		_, _ = db.Collection("sessions").InsertOne(ctx, user.Session{
+			SessionUuid:      session2Uuid,
+			UserUuid:         userUuid,
+			RefreshTokenHash: "hash2",
+			UserAgent:        "Device2",
+			ClientIP:         "2.2.2.2",
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+			ExpiresAt:        time.Now().Add(time.Hour),
+		})
+
+		sessions, err := svc.ListSessions(userUuid, session1Uuid)
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, len(sessions), 2)
+
+		var found1, found2 bool
+		for _, s := range sessions {
+			if s.SessionUuid == session1Uuid {
+				found1 = true
+				assert.True(t, s.IsCurrent)
+			}
+			if s.SessionUuid == session2Uuid {
+				found2 = true
+				assert.False(t, s.IsCurrent)
+			}
+		}
+		assert.True(t, found1)
+		assert.True(t, found2)
+	})
+
+	t.Run("RevokeSession removes specified session", func(t *testing.T) {
+		targetSession := uuid.New()
+		_, _ = db.Collection("sessions").InsertOne(ctx, user.Session{
+			SessionUuid:      targetSession,
+			UserUuid:         userUuid,
+			RefreshTokenHash: "targetHash",
+			ExpiresAt:        time.Now().Add(time.Hour),
+		})
+
+		err := svc.RevokeSession(userUuid, targetSession)
+		assert.NoError(t, err)
+
+		var session user.Session
+		findErr := db.Collection("sessions").FindOne(ctx, bson.M{"session_uuid": targetSession}).Decode(&session)
+		assert.ErrorIs(t, findErr, mongo.ErrNoDocuments)
+	})
+
+	t.Run("ValidateSession returns true for active session and false for non-existent", func(t *testing.T) {
+		validSession := uuid.New()
+		_, _ = db.Collection("sessions").InsertOne(ctx, user.Session{
+			SessionUuid:      validSession,
+			UserUuid:         userUuid,
+			RefreshTokenHash: "valHash",
+			ExpiresAt:        time.Now().Add(time.Hour),
+		})
+
+		assert.True(t, svc.ValidateSession(validSession))
+		assert.False(t, svc.ValidateSession(uuid.New()))
+	})
+
+	t.Run("LogoutCurrent removes specific session", func(t *testing.T) {
+		currentSession := uuid.New()
+		_, _ = db.Collection("sessions").InsertOne(ctx, user.Session{
+			SessionUuid:      currentSession,
+			UserUuid:         userUuid,
+			RefreshTokenHash: "currHash",
+			ExpiresAt:        time.Now().Add(time.Hour),
+		})
+
+		err := svc.LogoutCurrent(userUuid, currentSession)
+		assert.NoError(t, err)
+
+		var session user.Session
+		findErr := db.Collection("sessions").FindOne(ctx, bson.M{"session_uuid": currentSession}).Decode(&session)
+		assert.ErrorIs(t, findErr, mongo.ErrNoDocuments)
+	})
+
+	t.Run("LogoutAll removes all sessions for user", func(t *testing.T) {
+		s1 := uuid.New()
+		s2 := uuid.New()
+		_, _ = db.Collection("sessions").InsertOne(ctx, user.Session{
+			SessionUuid:      s1,
+			UserUuid:         userUuid,
+			RefreshTokenHash: "s1Hash",
+			ExpiresAt:        time.Now().Add(time.Hour),
+		})
+		_, _ = db.Collection("sessions").InsertOne(ctx, user.Session{
+			SessionUuid:      s2,
+			UserUuid:         userUuid,
+			RefreshTokenHash: "s2Hash",
+			ExpiresAt:        time.Now().Add(time.Hour),
+		})
+
+		err := svc.LogoutAll(userUuid)
+		assert.NoError(t, err)
+
+		count, err := db.Collection("sessions").CountDocuments(ctx, bson.M{"user_uuid": userUuid})
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), count)
 	})
 }
 

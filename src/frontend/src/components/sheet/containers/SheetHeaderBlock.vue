@@ -6,6 +6,7 @@ defineProps<{
   character: CharacterModel
   isDirty?: boolean
   isSaving?: boolean
+  username?: string
 }>()
 
 const emit = defineEmits<{
@@ -37,12 +38,20 @@ const emit = defineEmits<{
     <v-card color="surface" elevation="2"
       class="pa-3 rounded-lg border d-flex flex-column justify-center align-center actions-card">
       <div class="d-flex align-center justify-space-between w-100 mb-2">
-        <v-chip :color="isDirty ? 'warning' : 'success'" size="small" variant="tonal" class="font-weight-bold"
-          :class="{ 'cursor-pointer': isDirty }" :loading="isSaving"
-          :title="isDirty ? 'Click to save sheet (Ctrl+S)' : 'All changes saved'" @click="isDirty && emit('save')">
-          <v-icon start :icon="isDirty ? 'mdi-alert-circle-outline' : 'mdi-check-circle-outline'" size="small" />
-          {{ isDirty ? 'Not saved' : 'Saved' }}
-        </v-chip>
+        <div class="d-flex align-center gap-1 flex-wrap">
+          <v-chip :color="isDirty ? 'warning' : 'success'" size="small" variant="tonal" class="font-weight-bold"
+            :class="{ 'cursor-pointer': isDirty }" :loading="isSaving"
+            :title="isDirty ? 'Click to save sheet (Ctrl+S)' : 'All changes saved'" @click="isDirty && emit('save')">
+            <v-icon start :icon="isDirty ? 'mdi-alert-circle-outline' : 'mdi-check-circle-outline'" size="small" />
+            {{ isDirty ? 'Not saved' : 'Saved' }}
+          </v-chip>
+
+          <v-chip v-if="username" size="small" variant="tonal" color="primary" class="font-weight-medium user-chip"
+            :title="'Logged in as ' + username">
+            <v-icon start icon="mdi-account" size="small" />
+            <span class="user-chip-text">{{ username }}</span>
+          </v-chip>
+        </div>
 
         <!-- Kebab Menu Trigger -->
         <v-tooltip text="Sheet Menu & Settings" location="top" :open-on-focus="false">
@@ -98,6 +107,20 @@ const emit = defineEmits<{
 
 .border-t {
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.gap-1 {
+  gap: 4px;
+}
+
+.user-chip {
+  max-width: 120px;
+}
+
+.user-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 960px) {

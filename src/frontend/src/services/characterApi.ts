@@ -44,6 +44,15 @@ export interface CharacterSheetSummary {
   updatedAt?: string
 }
 
+export interface SessionDto {
+  sessionUuid: string
+  userAgent: string
+  clientIp: string
+  createdAt: string
+  updatedAt: string
+  isCurrent: boolean
+}
+
 class CharacterApiService {
   private baseUrl = '/api/character-sheets'
 
@@ -60,22 +69,48 @@ class CharacterApiService {
   }
 
   /**
+   * Retrieve stored session UUID from localStorage
+   */
+  getSessionId(): string | null {
+    return localStorage.getItem('session_id')
+  }
+
+  /**
+   * Persist session UUID in localStorage
+   */
+  setSessionId(sessionId: string): void {
+    localStorage.setItem('session_id', sessionId)
+  }
+
+  /**
+   * Remove session UUID from localStorage
+   */
+  clearSessionId(): void {
+    localStorage.removeItem('session_id')
+  }
+
+  /**
    * Attempt to refresh the JWT access token using /api/auth/refresh
    */
   async refreshToken(): Promise<boolean> {
-    const token = localStorage.getItem('auth_token')
-    if (!token) return false
     try {
+      const token = localStorage.getItem('auth_token')
+      const headers: Record<string, string> = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        credentials: 'include',
       })
       if (response.ok) {
         const data = await response.json()
         if (data.accessToken) {
           localStorage.setItem('auth_token', data.accessToken)
+          if (data.sessionId) {
+            localStorage.setItem('session_id', data.sessionId)
+          }
           return true
         }
       }
@@ -87,14 +122,19 @@ class CharacterApiService {
   }
 
   /**
-   * Wrapper around fetch that adds Authorization header and auto-refreshes token on 401
+   * Wrapper around fetch that adds Authorization header, sends cookies, and auto-refreshes token on 401
    */
   async authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
     const headers = {
       ...((options.headers as Record<string, string>) || {}),
       ...this.getAuthHeader(),
     }
-    let response = await fetch(url, { ...options, headers })
+    const fetchOptions: RequestInit = {
+      credentials: 'include',
+      ...options,
+      headers,
+    }
+    let response = await fetch(url, fetchOptions)
     if (response.status === 401 && this.isAuthenticated()) {
       const refreshed = await this.refreshToken()
       if (refreshed) {
@@ -102,10 +142,59 @@ class CharacterApiService {
           ...((options.headers as Record<string, string>) || {}),
           ...this.getAuthHeader(),
         }
-        response = await fetch(url, { ...options, headers: retryHeaders })
+        response = await fetch(url, { ...fetchOptions, headers: retryHeaders })
       }
     }
     return response
+  }
+
+  /**
+   * List active sessions for currently logged in user
+   */
+  async listSessions(): Promise<SessionDto[]> {
+    try {
+      const response = await this.authenticatedFetch('/api/auth/sessions')
+      if (response.ok) {
+        return (await response.json()) as SessionDto[]
+      }
+    } catch (err) {
+      console.warn('Failed to list sessions:', err)
+    }
+    return []
+  }
+
+  /**
+   * Remote revoke a specific device session
+   */
+  async revokeSession(uuid: string): Promise<boolean> {
+    try {
+      const response = await this.authenticatedFetch(`/api/auth/sessions/${uuid}`, {
+        method: 'DELETE',
+      })
+      return response.ok
+    } catch (err) {
+      console.warn('Failed to revoke session:', err)
+      return false
+    }
+  }
+
+  /**
+   * Revoke all active sessions for currently logged in user
+   */
+  async logoutAll(): Promise<boolean> {
+    try {
+      const response = await this.authenticatedFetch('/api/auth/logout-all', {
+        method: 'POST',
+      })
+      if (response.ok) {
+        localStorage.removeItem('auth_token')
+        this.clearSessionId()
+        return true
+      }
+    } catch (err) {
+      console.warn('Failed to logout all:', err)
+    }
+    return false
   }
 
   /**

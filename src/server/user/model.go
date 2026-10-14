@@ -36,8 +36,15 @@ var _VALID_USER_ROLES = map[UserRole]bool{
 }
 
 type Session struct {
-	UserUuid     uuid.UUID `json:"userUuid" bson:"user_uuid"`
-	RefreshToken string    `json:"refreshToken" bson:"refresh_token"`
+	ID               bson.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	SessionUuid      uuid.UUID     `json:"sessionUuid" bson:"session_uuid"`
+	UserUuid         uuid.UUID     `json:"userUuid" bson:"user_uuid"`
+	RefreshTokenHash string        `json:"refreshTokenHash" bson:"refresh_token_hash"`
+	UserAgent        string        `json:"userAgent,omitempty" bson:"user_agent,omitempty"`
+	ClientIP         string        `json:"clientIp,omitempty" bson:"client_ip,omitempty"`
+	CreatedAt        time.Time     `json:"createdAt" bson:"created_at"`
+	UpdatedAt        time.Time     `json:"updatedAt" bson:"updated_at"`
+	ExpiresAt        time.Time     `json:"expiresAt" bson:"expires_at"`
 }
 
 type User struct {

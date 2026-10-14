@@ -1,18 +1,4 @@
 definitions:
-  auth.LoginDto:
-    properties:
-      email:
-        type: string
-      password:
-        type: string
-      username:
-        type: string
-    type: object
-  auth.TokenDto:
-    properties:
-      accessToken:
-        type: string
-    type: object
   info.ServerInfoDto:
     properties:
       build:
@@ -80,52 +66,6 @@ definitions:
 info:
   contact: {}
 paths:
-  /auth/login:
-    post:
-      consumes:
-      - application/json
-      description: Authenticates a user and returns access and refresh tokens
-      parameters:
-      - description: Login credentials
-        in: body
-        name: loginDto
-        required: true
-        schema:
-          $ref: '#/definitions/auth.LoginDto'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/auth.TokenDto'
-      summary: User login
-      tags:
-      - auth
-  /auth/logout:
-    post:
-      description: Logs out current user session
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-      summary: User Logout
-      tags:
-      - auth
-  /auth/refresh:
-    post:
-      description: Generates a new access token using a valid refresh token
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/auth.TokenDto'
-      summary: Refresh Access Token
-      tags:
-      - auth
   /info:
     get:
       description: return information about the server build, version, etc ...

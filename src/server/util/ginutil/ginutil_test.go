@@ -72,3 +72,16 @@ func TestHandleServiceError(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }
+
+func TestRespondWithError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	RespondWithError(c, http.StatusBadRequest, "Sample error message")
+	assert.True(t, c.IsAborted())
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.JSONEq(t, `{"error":"Sample error message"}`, w.Body.String())
+}
+

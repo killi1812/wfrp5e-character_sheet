@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,30 +18,71 @@ import (
 )
 
 type mockAuthService struct {
-	loginFunc         func(identifier, password string) (string, error)
-	refreshTokensFunc func(accessToken string) (string, error)
-	logoutFunc        func(userUuid string) error
+	loginFunc         func(username, password string, requestedSession *uuid.UUID, userAgent, clientIP string) (string, string, uuid.UUID, error)
+	refreshTokensFunc func(rawRefreshToken string, userAgent, clientIP string) (string, string, uuid.UUID, error)
+	logoutCurrentFunc func(userUuid, sessionUuid uuid.UUID) error
+	logoutAllFunc     func(userUuid uuid.UUID) error
+	listSessionsFunc  func(userUuid, currentSessionUuid uuid.UUID) ([]SessionDto, error)
+	revokeSessionFunc func(userUuid, sessionUuid uuid.UUID) error
+	validateSessionFunc func(sessionUuid uuid.UUID) bool
 }
 
-func (m *mockAuthService) Login(identifier, password string) (string, error) {
+func (m *mockAuthService) Login(username, password string, requestedSession *uuid.UUID, userAgent, clientIP string) (string, string, uuid.UUID, error) {
 	if m.loginFunc != nil {
-		return m.loginFunc(identifier, password)
+		return m.loginFunc(username, password, requestedSession, userAgent, clientIP)
 	}
-	return "mock-access-token", nil
+	return "mock-access-token", "mock-refresh-token", uuid.New(), nil
 }
 
-func (m *mockAuthService) RefreshTokens(accessToken string) (string, error) {
+func (m *mockAuthService) RefreshTokens(rawRefreshToken string, userAgent, clientIP string) (string, string, uuid.UUID, error) {
 	if m.refreshTokensFunc != nil {
-		return m.refreshTokensFunc(accessToken)
+		return m.refreshTokensFunc(rawRefreshToken, userAgent, clientIP)
 	}
-	return "mock-refreshed-token", nil
+	return "mock-new-access-token", "mock-new-refresh-token", uuid.New(), nil
 }
 
-func (m *mockAuthService) Logout(userUuid string) error {
-	if m.logoutFunc != nil {
-		return m.logoutFunc(userUuid)
+func (m *mockAuthService) LogoutCurrent(userUuid, sessionUuid uuid.UUID) error {
+	if m.logoutCurrentFunc != nil {
+		return m.logoutCurrentFunc(userUuid, sessionUuid)
 	}
 	return nil
+}
+
+func (m *mockAuthService) LogoutAll(userUuid uuid.UUID) error {
+	if m.logoutAllFunc != nil {
+		return m.logoutAllFunc(userUuid)
+	}
+	return nil
+}
+
+func (m *mockAuthService) ListSessions(userUuid, currentSessionUuid uuid.UUID) ([]SessionDto, error) {
+	if m.listSessionsFunc != nil {
+		return m.listSessionsFunc(userUuid, currentSessionUuid)
+	}
+	return []SessionDto{
+		{
+			SessionUuid: currentSessionUuid,
+			UserAgent:   "TestBrowser/1.0",
+			ClientIP:    "127.0.0.1",
+			CreatedAt:   time.Now().Add(-1 * time.Hour),
+			UpdatedAt:   time.Now(),
+			IsCurrent:   true,
+		},
+	}, nil
+}
+
+func (m *mockAuthService) RevokeSession(userUuid, sessionUuid uuid.UUID) error {
+	if m.revokeSessionFunc != nil {
+		return m.revokeSessionFunc(userUuid, sessionUuid)
+	}
+	return nil
+}
+
+func (m *mockAuthService) ValidateSession(sessionUuid uuid.UUID) bool {
+	if m.validateSessionFunc != nil {
+		return m.validateSessionFunc(sessionUuid)
+	}
+	return true
 }
 
 func setupAuthTestRouter(service IAuthService) (*gin.Engine, *AuthCtn) {
@@ -60,24 +102,27 @@ func setupAuthTestRouter(service IAuthService) (*gin.Engine, *AuthCtn) {
 	return r, ctn
 }
 
-func generateValidToken(t *testing.T, userUuid uuid.UUID) string {
-	token, _, err := authUtil.GenerateTokens("auth@test.com", "authuser", "user", userUuid)
+func generateValidToken(t *testing.T, userUuid, sessionUuid uuid.UUID) string {
+	token, _, err := authUtil.GenerateTokens("auth@test.com", "authuser", "user", userUuid, sessionUuid)
 	assert.NoError(t, err)
 	return "Bearer " + token
 }
 
 func TestAuthCtn_Login(t *testing.T) {
-	t.Run("Valid login returns 200 with TokenDto", func(t *testing.T) {
+	t.Run("Valid login returns 200 with TokenDto and sets cookie", func(t *testing.T) {
+		sessionID := uuid.New()
 		mock := &mockAuthService{
-			loginFunc: func(id, pass string) (string, error) {
-				assert.Equal(t, "user1", id)
+			loginFunc: func(username, pass string, requestedSession *uuid.UUID, userAgent, clientIP string) (string, string, uuid.UUID, error) {
+				assert.Equal(t, "user1", username)
 				assert.Equal(t, "pass1", pass)
-				return "jwt-token-abc", nil
+				assert.NotNil(t, requestedSession)
+				assert.Equal(t, sessionID, *requestedSession)
+				return "jwt-access-abc", "jwt-refresh-xyz", sessionID, nil
 			},
 		}
 		router, _ := setupAuthTestRouter(mock)
 
-		payload := LoginDto{Username: "user1", Password: "pass1"}
+		payload := LoginDto{Username: "user1", Password: "pass1", SessionId: &sessionID}
 		body, _ := json.Marshal(payload)
 
 		req, _ := http.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
@@ -88,13 +133,27 @@ func TestAuthCtn_Login(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		var tokenResp TokenDto
 		assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &tokenResp))
-		assert.Equal(t, "jwt-token-abc", tokenResp.AccessToken)
+		assert.Equal(t, "jwt-access-abc", tokenResp.AccessToken)
+		assert.Equal(t, sessionID, tokenResp.SessionId)
+
+		cookies := w.Result().Cookies()
+		var refreshCookie *http.Cookie
+		for _, c := range cookies {
+			if c.Name == "refresh_token" {
+				refreshCookie = c
+				break
+			}
+		}
+		assert.NotNil(t, refreshCookie)
+		assert.Equal(t, "jwt-refresh-xyz", refreshCookie.Value)
+		assert.Equal(t, "/api/auth", refreshCookie.Path)
+		assert.True(t, refreshCookie.HttpOnly)
 	})
 
-	t.Run("Invalid credentials returns 401", func(t *testing.T) {
+	t.Run("Invalid credentials returns 401 with standard error format", func(t *testing.T) {
 		mock := &mockAuthService{
-			loginFunc: func(id, pass string) (string, error) {
-				return "", errors.New("invalid credentials")
+			loginFunc: func(username, pass string, requestedSession *uuid.UUID, userAgent, clientIP string) (string, string, uuid.UUID, error) {
+				return "", "", uuid.Nil, errors.New("invalid credentials")
 			},
 		}
 		router, _ := setupAuthTestRouter(mock)
@@ -108,60 +167,148 @@ func TestAuthCtn_Login(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		var errMap map[string]string
+		assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &errMap))
+		assert.Equal(t, "Invalid login credentials", errMap["error"])
 	})
 
-	t.Run("Malformed JSON returns without crashing", func(t *testing.T) {
+	t.Run("Malformed JSON returns 400", func(t *testing.T) {
 		router, _ := setupAuthTestRouter(&mockAuthService{})
 
 		req, _ := http.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader([]byte("bad json")))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 
 func TestAuthCtn_RefreshToken(t *testing.T) {
-	userUuid := uuid.New()
-
-	t.Run("Valid refresh returns 200 with new token", func(t *testing.T) {
+	t.Run("Valid refresh via cookie returns 200 with new token and rotates cookie", func(t *testing.T) {
+		sessionID := uuid.New()
 		mock := &mockAuthService{
-			refreshTokensFunc: func(token string) (string, error) {
-				return "new-refreshed-token", nil
+			refreshTokensFunc: func(rawRefreshToken, userAgent, clientIP string) (string, string, uuid.UUID, error) {
+				assert.Equal(t, "old-refresh-cookie", rawRefreshToken)
+				return "new-access-token", "new-refresh-cookie", sessionID, nil
 			},
 		}
 		router, _ := setupAuthTestRouter(mock)
 
 		req, _ := http.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
-		req.Header.Set("Authorization", generateValidToken(t, userUuid))
+		req.AddCookie(&http.Cookie{
+			Name:  "refresh_token",
+			Value: "old-refresh-cookie",
+		})
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var tokenResp TokenDto
 		assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &tokenResp))
-		assert.Equal(t, "new-refreshed-token", tokenResp.AccessToken)
+		assert.Equal(t, "new-access-token", tokenResp.AccessToken)
+		assert.Equal(t, sessionID, tokenResp.SessionId)
+
+		// Check rotated cookie
+		var rotatedCookie *http.Cookie
+		for _, c := range w.Result().Cookies() {
+			if c.Name == "refresh_token" {
+				rotatedCookie = c
+				break
+			}
+		}
+		assert.NotNil(t, rotatedCookie)
+		assert.Equal(t, "new-refresh-cookie", rotatedCookie.Value)
 	})
 
-	t.Run("Refresh service error returns 401", func(t *testing.T) {
+	t.Run("Valid refresh via Authorization header fallback returns 200", func(t *testing.T) {
+		sessionID := uuid.New()
 		mock := &mockAuthService{
-			refreshTokensFunc: func(token string) (string, error) {
-				return "", errors.New("refresh failed")
+			refreshTokensFunc: func(rawRefreshToken, userAgent, clientIP string) (string, string, uuid.UUID, error) {
+				assert.Equal(t, "header-token", rawRefreshToken)
+				return "new-access-token", "new-refresh-header", sessionID, nil
 			},
 		}
 		router, _ := setupAuthTestRouter(mock)
 
 		req, _ := http.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
-		req.Header.Set("Authorization", generateValidToken(t, userUuid))
+		req.Header.Set("Authorization", "header-token")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("Missing refresh token returns 401", func(t *testing.T) {
+		router, _ := setupAuthTestRouter(&mockAuthService{})
+
+		req, _ := http.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 
-	t.Run("Missing token on refresh returns 401", func(t *testing.T) {
-		router, _ := setupAuthTestRouter(&mockAuthService{})
+	t.Run("Refresh service error clears cookie and returns 401", func(t *testing.T) {
+		mock := &mockAuthService{
+			refreshTokensFunc: func(rawRefreshToken, userAgent, clientIP string) (string, string, uuid.UUID, error) {
+				return "", "", uuid.Nil, errors.New("replay attack detected")
+			},
+		}
+		router, _ := setupAuthTestRouter(mock)
 
 		req, _ := http.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
+		req.AddCookie(&http.Cookie{
+			Name:  "refresh_token",
+			Value: "compromised-token",
+		})
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		// Check that cookie was cleared (MaxAge < 0)
+		for _, c := range w.Result().Cookies() {
+			if c.Name == "refresh_token" {
+				assert.True(t, c.MaxAge < 0)
+			}
+		}
+	})
+}
+
+func TestAuthCtn_Logout(t *testing.T) {
+	userUuid := uuid.New()
+	sessionUuid := uuid.New()
+
+	t.Run("Valid logout returns 204 No Content and clears cookie", func(t *testing.T) {
+		loggedOutCalled := false
+		mock := &mockAuthService{
+			logoutCurrentFunc: func(u, s uuid.UUID) error {
+				assert.Equal(t, userUuid, u)
+				assert.Equal(t, sessionUuid, s)
+				loggedOutCalled = true
+				return nil
+			},
+		}
+		router, _ := setupAuthTestRouter(mock)
+
+		req, _ := http.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+		req.Header.Set("Authorization", generateValidToken(t, userUuid, sessionUuid))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNoContent, w.Code)
+		assert.True(t, loggedOutCalled)
+		for _, c := range w.Result().Cookies() {
+			if c.Name == "refresh_token" {
+				assert.True(t, c.MaxAge < 0)
+			}
+		}
+	})
+
+	t.Run("Logout without auth token returns 401", func(t *testing.T) {
+		router, _ := setupAuthTestRouter(&mockAuthService{})
+
+		req, _ := http.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
@@ -169,61 +316,184 @@ func TestAuthCtn_RefreshToken(t *testing.T) {
 	})
 }
 
-func TestAuthCtn_Logout(t *testing.T) {
+func TestAuthCtn_LogoutAll(t *testing.T) {
 	userUuid := uuid.New()
+	sessionUuid := uuid.New()
 
-	t.Run("Valid logout returns 200", func(t *testing.T) {
+	t.Run("Valid logout-all returns 204 No Content and calls LogoutAll", func(t *testing.T) {
+		called := false
 		mock := &mockAuthService{
-			logoutFunc: func(id string) error {
-				assert.Equal(t, userUuid.String(), id)
+			logoutAllFunc: func(u uuid.UUID) error {
+				assert.Equal(t, userUuid, u)
+				called = true
 				return nil
 			},
 		}
 		router, _ := setupAuthTestRouter(mock)
 
-		req, _ := http.NewRequest(http.MethodPost, "/api/auth/logout", nil)
-		req.Header.Set("Authorization", generateValidToken(t, userUuid))
+		req, _ := http.NewRequest(http.MethodPost, "/api/auth/logout-all", nil)
+		req.Header.Set("Authorization", generateValidToken(t, userUuid, sessionUuid))
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, http.StatusNoContent, w.Code)
+		assert.True(t, called)
+		for _, c := range w.Result().Cookies() {
+			if c.Name == "refresh_token" {
+				assert.True(t, c.MaxAge < 0)
+			}
+		}
 	})
+}
 
-	t.Run("Logout with invalid token returns 401", func(t *testing.T) {
-		router, _ := setupAuthTestRouter(&mockAuthService{})
+func TestAuthCtn_ListSessions(t *testing.T) {
+	userUuid := uuid.New()
+	sessionUuid := uuid.New()
 
-		req, _ := http.NewRequest(http.MethodPost, "/api/auth/logout", nil)
-		req.Header.Set("Authorization", "invalid-token-without-bearer")
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-	})
-
-	t.Run("Direct logout handler with invalid token returns 500", func(t *testing.T) {
-		_, ctn := setupAuthTestRouter(&mockAuthService{})
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request, _ = http.NewRequest(http.MethodPost, "/logout", nil)
-		c.Request.Header.Set("Authorization", "invalid")
-		ctn.logout(c)
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-	})
-
-	t.Run("Logout service error returns 500", func(t *testing.T) {
+	t.Run("Returns 200 with list of sessions", func(t *testing.T) {
 		mock := &mockAuthService{
-			logoutFunc: func(id string) error {
-				return errors.New("logout error")
+			listSessionsFunc: func(u, s uuid.UUID) ([]SessionDto, error) {
+				assert.Equal(t, userUuid, u)
+				assert.Equal(t, sessionUuid, s)
+				return []SessionDto{
+					{
+						SessionUuid: sessionUuid,
+						UserAgent:   "Chrome/120.0",
+						ClientIP:    "192.168.1.1",
+						IsCurrent:   true,
+					},
+					{
+						SessionUuid: uuid.New(),
+						UserAgent:   "Firefox/120.0",
+						ClientIP:    "192.168.1.2",
+						IsCurrent:   false,
+					},
+				}, nil
 			},
 		}
 		router, _ := setupAuthTestRouter(mock)
 
-		req, _ := http.NewRequest(http.MethodPost, "/api/auth/logout", nil)
-		req.Header.Set("Authorization", generateValidToken(t, userUuid))
+		req, _ := http.NewRequest(http.MethodGet, "/api/auth/sessions", nil)
+		req.Header.Set("Authorization", generateValidToken(t, userUuid, sessionUuid))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var sessions []SessionDto
+		assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &sessions))
+		assert.Len(t, sessions, 2)
+		assert.True(t, sessions[0].IsCurrent)
+		assert.False(t, sessions[1].IsCurrent)
+	})
+
+	t.Run("Service error returns 500", func(t *testing.T) {
+		mock := &mockAuthService{
+			listSessionsFunc: func(u, s uuid.UUID) ([]SessionDto, error) {
+				return nil, errors.New("db error")
+			},
+		}
+		router, _ := setupAuthTestRouter(mock)
+
+		req, _ := http.NewRequest(http.MethodGet, "/api/auth/sessions", nil)
+		req.Header.Set("Authorization", generateValidToken(t, userUuid, sessionUuid))
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("Direct handler call with missing userUuid returns 401", func(t *testing.T) {
+		_, ctn := setupAuthTestRouter(&mockAuthService{})
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request, _ = http.NewRequest(http.MethodGet, "/api/auth/sessions", nil)
+		ctn.listSessions(c)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+func TestAuthCtn_RevokeSession(t *testing.T) {
+	userUuid := uuid.New()
+	currentSessionUuid := uuid.New()
+	targetSessionUuid := uuid.New()
+
+	t.Run("Revoking remote session returns 204 No Content", func(t *testing.T) {
+		called := false
+		mock := &mockAuthService{
+			revokeSessionFunc: func(u, s uuid.UUID) error {
+				assert.Equal(t, userUuid, u)
+				assert.Equal(t, targetSessionUuid, s)
+				called = true
+				return nil
+			},
+		}
+		router, _ := setupAuthTestRouter(mock)
+
+		req, _ := http.NewRequest(http.MethodDelete, "/api/auth/sessions/"+targetSessionUuid.String(), nil)
+		req.Header.Set("Authorization", generateValidToken(t, userUuid, currentSessionUuid))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNoContent, w.Code)
+		assert.True(t, called)
+	})
+
+	t.Run("Revoking current session clears cookie and returns 204", func(t *testing.T) {
+		mock := &mockAuthService{
+			revokeSessionFunc: func(u, s uuid.UUID) error {
+				assert.Equal(t, currentSessionUuid, s)
+				return nil
+			},
+		}
+		router, _ := setupAuthTestRouter(mock)
+
+		req, _ := http.NewRequest(http.MethodDelete, "/api/auth/sessions/"+currentSessionUuid.String(), nil)
+		req.Header.Set("Authorization", generateValidToken(t, userUuid, currentSessionUuid))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNoContent, w.Code)
+		for _, c := range w.Result().Cookies() {
+			if c.Name == "refresh_token" {
+				assert.True(t, c.MaxAge < 0)
+			}
+		}
+	})
+
+	t.Run("Invalid session UUID parameter returns 400", func(t *testing.T) {
+		router, _ := setupAuthTestRouter(&mockAuthService{})
+
+		req, _ := http.NewRequest(http.MethodDelete, "/api/auth/sessions/not-a-uuid", nil)
+		req.Header.Set("Authorization", generateValidToken(t, userUuid, currentSessionUuid))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Service error returns 500", func(t *testing.T) {
+		mock := &mockAuthService{
+			revokeSessionFunc: func(u, s uuid.UUID) error {
+				return errors.New("db delete error")
+			},
+		}
+		router, _ := setupAuthTestRouter(mock)
+
+		req, _ := http.NewRequest(http.MethodDelete, "/api/auth/sessions/"+targetSessionUuid.String(), nil)
+		req.Header.Set("Authorization", generateValidToken(t, userUuid, currentSessionUuid))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("Direct handler call with missing userUuid returns 401", func(t *testing.T) {
+		_, ctn := setupAuthTestRouter(&mockAuthService{})
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request, _ = http.NewRequest(http.MethodDelete, "/api/auth/sessions/"+targetSessionUuid.String(), nil)
+		ctn.revokeSession(c)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 }
 

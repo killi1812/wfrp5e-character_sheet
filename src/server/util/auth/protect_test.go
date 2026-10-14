@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -166,6 +167,50 @@ func (suite *MiddlewareTestSuite) TestProtect_ValidToken_InsufficientRole() {
 	w := suite.performRequest(http.MethodGet, "/protected/admin", userToken)
 
 	assert.Equal(suite.T(), http.StatusForbidden, w.Code)
+}
+
+func (suite *MiddlewareTestSuite) TestProtect_SessionValidator_Active() {
+	sessionID := uuid.New()
+	auth.SetSessionValidator(func(sID uuid.UUID) bool {
+		return sID == sessionID
+	})
+	defer auth.SetSessionValidator(nil)
+
+	claims := &auth.Claims{
+		Username:    "user@example.com",
+		SessionUuid: sessionID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        "valid-user",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, _ := token.SignedString([]byte(app.AccessKey))
+
+	w := suite.performRequest(http.MethodGet, "/protected/general", tokenString)
+	assert.Equal(suite.T(), http.StatusOK, w.Code)
+}
+
+func (suite *MiddlewareTestSuite) TestProtect_SessionValidator_Revoked() {
+	auth.SetSessionValidator(func(sID uuid.UUID) bool {
+		return false
+	})
+	defer auth.SetSessionValidator(nil)
+
+	claims := &auth.Claims{
+		Username:    "user@example.com",
+		SessionUuid: uuid.New(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        "valid-user",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, _ := token.SignedString([]byte(app.AccessKey))
+
+	w := suite.performRequest(http.MethodGet, "/protected/general", tokenString)
+	assert.Equal(suite.T(), http.StatusUnauthorized, w.Code)
+	assert.Contains(suite.T(), w.Body.String(), "Session revoked or expired")
 }
 
 func TestMiddlewareSuite(t *testing.T) {

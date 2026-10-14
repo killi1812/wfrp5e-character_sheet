@@ -4,6 +4,7 @@ import { useTheme } from 'vuetify'
 import AuthDialog from './components/AuthDialog.vue'
 import GuestUploadDialog from './components/GuestUploadDialog.vue'
 import AdminPage from './views/AdminPage.vue'
+import AccountPage from './views/AccountPage.vue'
 import CharacterSheetPage from './views/CharacterSheetPage.vue'
 import { characterApi } from './services/characterApi'
 
@@ -21,8 +22,8 @@ const showKebabOverlay = ref(false)
 const showGuestUploadDialog = ref(false)
 const guestCharacterName = ref('')
 
-// Page Navigation View State ('sheet' | 'admin')
-const currentPage = ref<'sheet' | 'admin'>('sheet')
+// Page Navigation View State ('sheet' | 'admin' | 'account')
+const currentPage = ref<'sheet' | 'admin' | 'account'>('sheet')
 const sheetRef = ref<InstanceType<typeof CharacterSheetPage> | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
@@ -51,9 +52,17 @@ onMounted(async () => {
 
   if (window.location.pathname === '/admin') {
     currentPage.value = 'admin'
+  } else if (window.location.pathname === '/account') {
+    currentPage.value = 'account'
   }
   window.addEventListener('popstate', () => {
-    currentPage.value = window.location.pathname === '/admin' ? 'admin' : 'sheet'
+    if (window.location.pathname === '/admin') {
+      currentPage.value = 'admin'
+    } else if (window.location.pathname === '/account') {
+      currentPage.value = 'account'
+    } else {
+      currentPage.value = 'sheet'
+    }
   })
 
   // Restore authenticated session from localStorage if present
@@ -96,9 +105,9 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
 })
 
-function navigateTo(page: 'sheet' | 'admin') {
+function navigateTo(page: 'sheet' | 'admin' | 'account') {
   currentPage.value = page
-  const targetPath = page === 'admin' ? '/admin' : '/'
+  const targetPath = page === 'admin' ? '/admin' : page === 'account' ? '/account' : '/'
   if (window.location.pathname !== targetPath) {
     window.history.pushState({}, '', targetPath)
   }
@@ -138,13 +147,18 @@ async function logout() {
       await fetch('/api/auth/logout', {
         method: 'POST',
         headers: { Authorization: `Bearer ${currentUser.value.token}` },
+        credentials: 'include',
       })
     } catch {
       // ignore network errors on logout
     }
   }
   localStorage.removeItem('auth_token')
+  characterApi.clearSessionId()
   currentUser.value = null
+  if (currentPage.value === 'account' || currentPage.value === 'admin') {
+    navigateTo('sheet')
+  }
 }
 
 const isAdmin = computed(() => currentUser.value?.role === 'admin')
@@ -152,8 +166,8 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
 <template>
   <v-app class="wfrp-full-app bg-background text-on-background">
-    <!-- Floating Kebab Button (only on admin page; on sheet page it is in the actions card) -->
-    <div v-if="currentPage === 'admin'" class="kebab-fixed-pos">
+    <!-- Floating Kebab Button (shown when not on sheet page; on sheet page it is in the actions card) -->
+    <div v-if="currentPage !== 'sheet'" class="kebab-fixed-pos">
       <v-tooltip text="System Options & Settings" location="left">
         <template #activator="{ props: tooltipProps }">
           <v-btn v-bind="tooltipProps" icon="mdi-dots-vertical" color="primary" elevation="8" size="large"
@@ -197,6 +211,11 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
             subtitle="User & Database Management" color="secondary"
             class="mb-2 rounded-lg bg-secondary text-on-secondary font-weight-bold" @click="navigateTo('admin')" />
 
+          <!-- Account Settings Button (If logged in) -->
+          <v-list-item v-if="currentUser" prepend-icon="mdi-account-cog" title="Account Settings"
+            subtitle="Active devices & session security"
+            class="mb-2 rounded-lg bg-surface-variant border" @click="navigateTo('account')" />
+
           <!-- Sheet Actions (when viewing character sheet) -->
           <template v-if="currentPage === 'sheet'">
             <v-divider class="my-3" />
@@ -239,12 +258,17 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
     <!-- PAGE CONDITIONAL RENDERING -->
     <template v-if="currentPage === 'sheet'">
-      <CharacterSheetPage ref="sheetRef" @open-menu="showKebabOverlay = true" />
+      <CharacterSheetPage ref="sheetRef" :current-user="currentUser" @open-menu="showKebabOverlay = true" />
     </template>
 
     <!-- STANDALONE ADMIN PAGE VIEW -->
     <template v-else-if="currentPage === 'admin'">
       <AdminPage :current-user="currentUser" @back="navigateTo('sheet')" />
+    </template>
+
+    <!-- STANDALONE ACCOUNT PAGE VIEW -->
+    <template v-else-if="currentPage === 'account'">
+      <AccountPage :current-user="currentUser" @back="navigateTo('sheet')" @logged-out="logout" />
     </template>
 
     <!-- Dialogs -->
