@@ -230,11 +230,11 @@ function loadMockData() {
   basicSkills.value = mock.basicSkills
   advancedSkills.value = mock.advancedSkills
   languages.value = mock.languages
-  currentSheetUuid.value = 'mock-gottfried'
+  currentSheetUuid.value = undefined
   snackbarMessage.value = 'Loaded demo character (Gottfried von Altdorf)!'
   saveSnackbar.value = true
-  isPersisted.value = true
-  updateSavedSnapshot()
+  isPersisted.value = false
+  savedSnapshot.value = ''
 }
 
 function newBlankSheet() {
