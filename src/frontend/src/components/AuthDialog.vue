@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { characterApi } from '../services/characterApi'
+import { useAuth } from '../composables/useAuth'
 
 const props = defineProps<{
   modelValue: boolean
@@ -10,6 +10,8 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'login-success', user: { username: string; role: string; token: string; uuid?: string }): void
 }>()
+
+const { login, register } = useAuth()
 
 const tab = ref<'login' | 'register'>('login')
 const loading = ref(false)
@@ -38,60 +40,11 @@ async function handleLogin() {
   errorMessage.value = ''
 
   try {
-    const reqBody: { username: string; password: string; sessionId?: string } = {
-      username: loginUsername.value,
-      password: loginPassword.value,
-    }
-    const storedSession = characterApi.getSessionId()
-    if (storedSession) {
-      reqBody.sessionId = storedSession
-    }
-
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(reqBody),
-    })
-
-    if (res.ok) {
-      const data = await res.json()
-      const token = data.accessToken
-      if (token) {
-        localStorage.setItem('auth_token', token)
-      }
-      if (data.sessionId) {
-        characterApi.setSessionId(data.sessionId)
-      }
-
-      // Fetch authenticated user profile data
-      try {
-        const userRes = await fetch('/api/user/my-data', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (userRes.ok) {
-          const userData = await userRes.json()
-          emit('login-success', {
-            username: userData.username || loginUsername.value,
-            role: userData.role || (loginUsername.value.toLowerCase() === 'admin' ? 'admin' : 'user'),
-            token: token,
-            uuid: userData.uuid,
-          })
-        } else {
-          const role = loginUsername.value.toLowerCase() === 'admin' ? 'admin' : 'user'
-          emit('login-success', { username: loginUsername.value, role, token })
-        }
-      } catch {
-        const role = loginUsername.value.toLowerCase() === 'admin' ? 'admin' : 'user'
-        emit('login-success', { username: loginUsername.value, role, token })
-      }
-      close()
-    } else {
-      const errData = await res.json().catch(() => null)
-      errorMessage.value = errData?.error || 'Invalid login credentials'
-    }
-  } catch (err) {
-    errorMessage.value = 'Failed to connect to server. Please try again.'
+    const user = await login(loginUsername.value, loginPassword.value)
+    emit('login-success', user)
+    close()
+  } catch (err: any) {
+    errorMessage.value = err?.response?.data?.error || 'Invalid login credentials'
   } finally {
     loading.value = false
   }
@@ -110,26 +63,12 @@ async function handleRegister() {
   errorMessage.value = ''
 
   try {
-    const res = await fetch('/api/user/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: regUsername.value,
-        email: regEmail.value || undefined,
-        password: regPassword.value,
-      }),
-    })
-
-    if (res.ok) {
-      loginUsername.value = regUsername.value
-      loginPassword.value = regPassword.value
-      await handleLogin()
-    } else {
-      const errData = await res.json().catch(() => null)
-      errorMessage.value = errData?.error || 'Registration failed.'
-    }
+    await register(regUsername.value, regPassword.value, regEmail.value || undefined)
+    loginUsername.value = regUsername.value
+    loginPassword.value = regPassword.value
+    await handleLogin()
   } catch (err: any) {
-    errorMessage.value = err?.message || 'Network error during registration.'
+    errorMessage.value = err?.response?.data?.error || err?.message || 'Registration failed.'
   } finally {
     loading.value = false
   }

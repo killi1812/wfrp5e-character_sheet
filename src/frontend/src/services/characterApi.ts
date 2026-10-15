@@ -1,4 +1,5 @@
 // API Service / Placeholder Client for Character Sheets
+import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
 import {
   type CharacterModel,
   type Skill,
@@ -53,13 +54,83 @@ export interface SessionDto {
   isCurrent: boolean
 }
 
+export const apiClient: AxiosInstance = axios.create({
+  baseURL: '',
+  withCredentials: true,
+})
+
+// Request interceptor: attach Bearer token if present
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const token = localStorage.getItem('auth_token')
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// Response interceptor: handle 401 with automatic token refresh
+let isRefreshing = false
+let refreshSubscribers: ((token: string | null) => void)[] = []
+
+function subscribeTokenRefresh(cb: (token: string | null) => void) {
+  refreshSubscribers.push(cb)
+}
+
+function onRefreshed(token: string | null) {
+  refreshSubscribers.forEach((cb) => cb(token))
+  refreshSubscribers = []
+}
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config
+    if (!originalRequest) {
+      return Promise.reject(error)
+    }
+
+    if (error.response?.status === 401 && !originalRequest._retry && characterApi.isAuthenticated()) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((newToken) => {
+            if (newToken) {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`
+              resolve(apiClient(originalRequest))
+            } else {
+              reject(error)
+            }
+          })
+        })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const refreshed = await characterApi.refreshToken()
+        const newToken = localStorage.getItem('auth_token')
+        if (refreshed && newToken) {
+          onRefreshed(newToken)
+          originalRequest.headers.Authorization = `Bearer ${newToken}`
+          return apiClient(originalRequest)
+        } else {
+          onRefreshed(null)
+          return Promise.reject(error)
+        }
+      } catch (refreshErr) {
+        onRefreshed(null)
+        return Promise.reject(refreshErr)
+      } finally {
+        isRefreshing = false
+      }
+    }
+
+    return Promise.reject(error)
+  }
+)
+
 class CharacterApiService {
   private baseUrl = '/api/character-sheets'
-
-  private getAuthHeader(): Record<string, string> {
-    const token = localStorage.getItem('auth_token')
-    return token ? { Authorization: `Bearer ${token}` } : {}
-  }
 
   /**
    * Check whether user currently holds an active auth token
@@ -99,20 +170,20 @@ class CharacterApiService {
       if (token) {
         headers['Authorization'] = `Bearer ${token}`
       }
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-      })
-      if (response.ok) {
-        const data = await response.json()
-        if (data.accessToken) {
-          localStorage.setItem('auth_token', data.accessToken)
-          if (data.sessionId) {
-            localStorage.setItem('session_id', data.sessionId)
-          }
-          return true
+      const response = await axios.post<{ accessToken: string; sessionId?: string }>(
+        '/api/auth/refresh',
+        {},
+        {
+          headers,
+          withCredentials: true,
         }
+      )
+      if (response.status === 200 && response.data?.accessToken) {
+        localStorage.setItem('auth_token', response.data.accessToken)
+        if (response.data.sessionId) {
+          localStorage.setItem('session_id', response.data.sessionId)
+        }
+        return true
       }
     } catch (err) {
       console.warn('Failed to refresh token:', err)
@@ -122,45 +193,16 @@ class CharacterApiService {
   }
 
   /**
-   * Wrapper around fetch that adds Authorization header, sends cookies, and auto-refreshes token on 401
-   */
-  async authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
-    const headers = {
-      ...((options.headers as Record<string, string>) || {}),
-      ...this.getAuthHeader(),
-    }
-    const fetchOptions: RequestInit = {
-      credentials: 'include',
-      ...options,
-      headers,
-    }
-    let response = await fetch(url, fetchOptions)
-    if (response.status === 401 && this.isAuthenticated()) {
-      const refreshed = await this.refreshToken()
-      if (refreshed) {
-        const retryHeaders = {
-          ...((options.headers as Record<string, string>) || {}),
-          ...this.getAuthHeader(),
-        }
-        response = await fetch(url, { ...fetchOptions, headers: retryHeaders })
-      }
-    }
-    return response
-  }
-
-  /**
    * List active sessions for currently logged in user
    */
   async listSessions(): Promise<SessionDto[]> {
     try {
-      const response = await this.authenticatedFetch('/api/auth/sessions')
-      if (response.ok) {
-        return (await response.json()) as SessionDto[]
-      }
+      const response = await apiClient.get<SessionDto[]>('/api/auth/sessions')
+      return response.data || []
     } catch (err) {
       console.warn('Failed to list sessions:', err)
+      return []
     }
-    return []
   }
 
   /**
@@ -168,10 +210,8 @@ class CharacterApiService {
    */
   async revokeSession(uuid: string): Promise<boolean> {
     try {
-      const response = await this.authenticatedFetch(`/api/auth/sessions/${uuid}`, {
-        method: 'DELETE',
-      })
-      return response.ok
+      const response = await apiClient.delete(`/api/auth/sessions/${uuid}`)
+      return response.status >= 200 && response.status < 300
     } catch (err) {
       console.warn('Failed to revoke session:', err)
       return false
@@ -183,10 +223,8 @@ class CharacterApiService {
    */
   async logoutAll(): Promise<boolean> {
     try {
-      const response = await this.authenticatedFetch('/api/auth/logout-all', {
-        method: 'POST',
-      })
-      if (response.ok) {
+      const response = await apiClient.post('/api/auth/logout-all')
+      if (response.status >= 200 && response.status < 300) {
         localStorage.removeItem('auth_token')
         this.clearSessionId()
         return true
@@ -263,14 +301,9 @@ class CharacterApiService {
   async getCharacter(uuid?: string): Promise<CharacterSheetPayload> {
     if (this.isAuthenticated() && uuid && uuid !== 'demo' && uuid !== 'mock') {
       try {
-        const response = await this.authenticatedFetch(`${this.baseUrl}/${uuid}`, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-        if (response.ok) {
-          const data = await response.json()
-          return this.adaptFromBackend(data)
+        const response = await apiClient.get(`${this.baseUrl}/${uuid}`)
+        if (response.data) {
+          return this.adaptFromBackend(response.data)
         }
       } catch (err) {
         console.warn('API fetch failed:', err)
@@ -313,25 +346,32 @@ class CharacterApiService {
     const targetUuid = isExistingCloudSheet ? uuid! : this.generateUUID()
     const endpoint = isExistingCloudSheet ? `${this.baseUrl}/${targetUuid}` : `${this.baseUrl}/`
     const method = isExistingCloudSheet ? 'PUT' : 'POST'
+    const backendPayload = this.adaptToBackend(payload, targetUuid)
 
-    const response = await this.authenticatedFetch(endpoint, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      keepalive: options?.keepalive,
-      body: JSON.stringify(this.adaptToBackend(payload, targetUuid)),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to save character to server: ${response.statusText}`)
+    if (options?.keepalive) {
+      // Browser unload keepalive requires fetch
+      const token = localStorage.getItem('auth_token')
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      await fetch(endpoint, {
+        method,
+        headers,
+        credentials: 'include',
+        keepalive: true,
+        body: JSON.stringify(backendPayload),
+      }).catch(() => {})
+      return { success: true, uuid: targetUuid, mode: 'cloud' }
     }
 
-    const result = await response.json()
+    const response = method === 'PUT'
+      ? await apiClient.put(endpoint, backendPayload)
+      : await apiClient.post(endpoint, backendPayload)
+
+    const result = response.data
     // Remove local storage data to keep sheet solely on the server
     this.clearGuestSheet()
 
-    return { success: true, uuid: result.uuid || targetUuid, mode: 'cloud' }
+    return { success: true, uuid: result?.uuid || targetUuid, mode: 'cloud' }
   }
 
   /**
@@ -343,10 +383,8 @@ class CharacterApiService {
     }
 
     try {
-      const response = await this.authenticatedFetch(`${this.baseUrl}/${uuid}`, {
-        method: 'DELETE',
-      })
-      return response.ok
+      const response = await apiClient.delete(`${this.baseUrl}/${uuid}`)
+      return response.status >= 200 && response.status < 300
     } catch (err) {
       console.warn('Backend delete failed:', err)
       return false
@@ -359,22 +397,16 @@ class CharacterApiService {
   async listCharacters(): Promise<CharacterSheetSummary[]> {
     if (this.isAuthenticated()) {
       try {
-        const response = await this.authenticatedFetch(`${this.baseUrl}/`, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-        if (response.ok) {
-          const list = await response.json()
-          if (Array.isArray(list)) {
-            return list.map((item: any) => ({
-              uuid: item.uuid || '',
-              name: item.name || 'Unnamed Character',
-              species: item.species || '',
-              career: item.career || '',
-              updatedAt: item.updatedAt || '',
-            }))
-          }
+        const response = await apiClient.get(`${this.baseUrl}/`)
+        const list = response.data
+        if (Array.isArray(list)) {
+          return list.map((item: any) => ({
+            uuid: item.uuid || '',
+            name: item.name || 'Unnamed Character',
+            species: item.species || '',
+            career: item.career || '',
+            updatedAt: item.updatedAt || '',
+          }))
         }
       } catch (err) {
         console.warn('Backend list failed, returning empty:', err)
@@ -405,6 +437,33 @@ class CharacterApiService {
         updatedAt: new Date().toISOString(),
       },
     ]
+  }
+
+  /**
+   * Auth API helpers using Axios
+   */
+  async login(payload: { username: string; password: string; sessionId?: string }): Promise<{ accessToken: string; sessionId?: string }> {
+    const res = await axios.post<{ accessToken: string; sessionId?: string }>('/api/auth/login', payload, {
+      withCredentials: true,
+    })
+    return res.data
+  }
+
+  async register(payload: { username: string; password: string; email?: string }): Promise<void> {
+    await axios.post('/api/user/register', payload)
+  }
+
+  async getMyData(): Promise<{ username: string; role: string; uuid?: string }> {
+    const res = await apiClient.get<{ username: string; role: string; uuid?: string }>('/api/user/my-data')
+    return res.data
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await apiClient.post('/api/auth/logout')
+    } catch {
+      // ignore network errors on logout
+    }
   }
 
   /**

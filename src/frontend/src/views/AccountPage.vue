@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { characterApi, type SessionDto } from '../services/characterApi'
+import { useAuth } from '../composables/useAuth'
 
 const props = defineProps<{
-  currentUser: { username: string; role: string; token: string; uuid?: string } | null
+  currentUser?: { username: string; role: string; token: string; uuid?: string } | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'back'): void
   (e: 'logged-out'): void
 }>()
+
+const { currentUser: authUser, logout } = useAuth()
+const user = computed(() => props.currentUser || authUser.value)
 
 const activeTab = ref<'sessions' | 'profile'>('sessions')
 const sessions = ref<SessionDto[]>([])
@@ -87,6 +90,7 @@ async function executeRevokeSession() {
     const ok = await characterApi.revokeSession(target.sessionUuid)
     if (ok) {
       if (target.isCurrent) {
+        await logout()
         emit('logged-out')
       } else {
         successMessage.value = 'Session revoked successfully.'
@@ -110,6 +114,7 @@ async function executeLogoutAll() {
   try {
     const ok = await characterApi.logoutAll()
     if (ok) {
+      await logout()
       emit('logged-out')
     } else {
       errorMessage.value = 'Failed to sign out from all devices.'
@@ -127,45 +132,19 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="account-page-container bg-background min-vh-100 pa-3 pa-md-5">
-    <!-- Top Header Bar -->
-    <v-card color="surface" elevation="3" class="pa-4 rounded-xl mb-6 border">
-      <div class="d-flex flex-wrap justify-space-between align-center gap-3">
-        <div class="d-flex align-center">
-          <v-btn
-            icon="mdi-arrow-left"
-            color="primary"
-            variant="tonal"
-            class="mr-4"
-            aria-label="Back to character sheet"
-            @click="emit('back')"
-          />
-          <div>
-            <h1 class="text-h4 font-weight-black text-primary mb-0 d-flex align-center">
-              <v-icon icon="mdi-account-cog" color="primary" class="mr-2" />
-              Account Settings
-            </h1>
-            <div class="text-subtitle-2 text-medium-emphasis">
-              Manage security, active devices, and account configuration
-            </div>
-          </div>
-        </div>
-
-        <div class="d-flex align-center gap-2">
-          <v-chip color="primary" variant="flat" size="medium" prepend-icon="mdi-account-circle">
-            {{ currentUser?.username || 'User' }} ({{ currentUser?.role || 'user' }})
-          </v-chip>
-          <v-btn
-            color="primary"
-            variant="outlined"
-            prepend-icon="mdi-file-document-outline"
-            @click="emit('back')"
-          >
-            Back to Character Sheet
-          </v-btn>
+  <div class="account-page-container">
+    <!-- Page Header -->
+    <div class="d-flex flex-wrap justify-space-between align-center mb-6">
+      <div>
+        <h1 class="text-h4 font-weight-black text-primary mb-1 d-flex align-center">
+          <v-icon icon="mdi-account-cog" color="primary" class="mr-2" />
+          Account Settings
+        </h1>
+        <div class="text-subtitle-2 text-medium-emphasis">
+          Manage security, active devices, and session security
         </div>
       </div>
-    </v-card>
+    </div>
 
     <!-- Alerts -->
     <v-alert
@@ -344,21 +323,21 @@ onMounted(() => {
                 <v-col cols="12" sm="6">
                   <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Username</div>
                   <div class="text-body-1 font-weight-medium text-on-surface mb-3">
-                    {{ currentUser?.username || '—' }}
+                    {{ user?.username || '—' }}
                   </div>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Account Role</div>
                   <div class="text-body-1 font-weight-medium text-on-surface mb-3">
                     <v-chip color="secondary" size="small" class="text-uppercase font-weight-bold">
-                      {{ currentUser?.role || 'user' }}
+                      {{ user?.role || 'user' }}
                     </v-chip>
                   </div>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">User UUID</div>
                   <div class="text-body-2 text-medium-emphasis mb-3 font-mono">
-                    {{ currentUser?.uuid || 'Available via JWT token' }}
+                    {{ user?.uuid || 'Available via JWT token' }}
                   </div>
                 </v-col>
                 <v-col cols="12" sm="6">

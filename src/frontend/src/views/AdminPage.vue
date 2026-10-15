@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-const props = defineProps<{
-  currentUser: { username: string; role: string; token: string } | null
-}>()
-
-const emit = defineEmits<{
-  (e: 'back'): void
-}>()
-
 const activeTab = ref<'users' | 'sheets' | 'system'>('users')
 const searchUsers = ref('')
 const searchSheets = ref('')
@@ -60,44 +52,19 @@ function deleteSheet(uuidStr: string) {
 </script>
 
 <template>
-  <div class="admin-page-container bg-background min-vh-100 pa-4 pa-md-6">
-    <!-- Top Header Bar -->
-    <v-card color="surface" elevation="3" class="pa-4 rounded-xl mb-6 border">
-      <div class="d-flex flex-wrap justify-space-between align-center gap-3">
-        <div class="d-flex align-center">
-          <v-btn
-            icon="mdi-arrow-left"
-            color="primary"
-            variant="tonal"
-            class="mr-4"
-            @click="emit('back')"
-          />
-          <div>
-            <h1 class="text-h4 font-weight-black text-primary mb-0 d-flex align-center">
-              <v-icon icon="mdi-shield-crown" color="primary" class="mr-2" />
-              Admin Management Console
-            </h1>
-            <div class="text-subtitle-2 text-medium-emphasis">
-              System Control, Database & User Administration
-            </div>
-          </div>
-        </div>
-
-        <div class="d-flex align-center gap-2">
-          <v-chip color="secondary" variant="flat" size="medium" prepend-icon="mdi-shield-account">
-            Admin: {{ currentUser?.username || 'Administrator' }}
-          </v-chip>
-          <v-btn
-            color="primary"
-            variant="outlined"
-            prepend-icon="mdi-file-document-outline"
-            @click="emit('back')"
-          >
-            Back to Character Sheet
-          </v-btn>
+  <div class="admin-page-container">
+    <!-- Page Header -->
+    <div class="d-flex flex-wrap justify-space-between align-center mb-6">
+      <div>
+        <h1 class="text-h4 font-weight-black text-primary mb-1 d-flex align-center">
+          <v-icon icon="mdi-shield-crown" color="primary" class="mr-2" />
+          Admin Management Console
+        </h1>
+        <div class="text-subtitle-2 text-medium-emphasis">
+          System Control, Database & User Administration
         </div>
       </div>
-    </v-card>
+    </div>
 
     <!-- Navigation Tabs -->
     <v-card color="surface" elevation="2" class="rounded-xl border">

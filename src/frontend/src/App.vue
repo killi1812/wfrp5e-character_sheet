@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from 'vuetify'
 import AuthDialog from './components/AuthDialog.vue'
 import GuestUploadDialog from './components/GuestUploadDialog.vue'
-import AdminPage from './views/AdminPage.vue'
-import AccountPage from './views/AccountPage.vue'
 import CharacterSheetPage from './views/CharacterSheetPage.vue'
 import { characterApi } from './services/characterApi'
+import { useAuth } from './composables/useAuth'
 
 const theme = useTheme()
 const isDark = computed(() => theme.global.name.value === 'wfrpDark')
@@ -15,15 +15,15 @@ function toggleTheme() {
   theme.global.name.value = isDark.value ? 'wfrpLight' : 'wfrpDark'
 }
 
-// User & Auth State
-const currentUser = ref<{ username: string; role: string; token: string; uuid?: string } | null>(null)
-const showAuthDialog = ref(false)
+const router = useRouter()
+const route = useRoute()
+const { currentUser, isAdmin, showAuthModal, initAuth, logout } = useAuth()
+
+// Dialog & UI State
 const showKebabOverlay = ref(false)
 const showGuestUploadDialog = ref(false)
 const guestCharacterName = ref('')
 
-// Page Navigation View State ('sheet' | 'admin' | 'account')
-const currentPage = ref<'sheet' | 'admin' | 'account'>('sheet')
 const sheetRef = ref<InstanceType<typeof CharacterSheetPage> | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
@@ -31,8 +31,8 @@ async function handleFileUpload(e: Event) {
   const target = e.target as HTMLInputElement
   const file = target.files?.[0]
   if (!file) return
-  if (currentPage.value !== 'sheet') {
-    navigateTo('sheet')
+  if (route.path !== '/') {
+    await router.push('/')
   }
   await sheetRef.value?.importJson(file)
   target.value = ''
@@ -40,7 +40,7 @@ async function handleFileUpload(e: Event) {
 
 function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-    if (currentPage.value === 'sheet') {
+    if (route.path === '/') {
       e.preventDefault()
       sheetRef.value?.saveSheet()
     }
@@ -49,73 +49,14 @@ function handleGlobalKeydown(e: KeyboardEvent) {
 
 onMounted(async () => {
   window.addEventListener('keydown', handleGlobalKeydown)
-
-  if (window.location.pathname === '/admin') {
-    currentPage.value = 'admin'
-  } else if (window.location.pathname === '/account') {
-    currentPage.value = 'account'
-  }
-  window.addEventListener('popstate', () => {
-    if (window.location.pathname === '/admin') {
-      currentPage.value = 'admin'
-    } else if (window.location.pathname === '/account') {
-      currentPage.value = 'account'
-    } else {
-      currentPage.value = 'sheet'
-    }
-  })
-
-  // Restore authenticated session from localStorage if present
-  const storedToken = localStorage.getItem('auth_token')
-  if (storedToken) {
-    try {
-      let res = await fetch('/api/user/my-data', {
-        headers: { Authorization: `Bearer ${storedToken}` },
-      })
-      if (res.status === 401) {
-        const refreshed = await characterApi.refreshToken()
-        if (refreshed) {
-          const newToken = localStorage.getItem('auth_token')
-          if (newToken) {
-            res = await fetch('/api/user/my-data', {
-              headers: { Authorization: `Bearer ${newToken}` },
-            })
-          }
-        }
-      }
-      if (res.ok) {
-        const userData = await res.json()
-        const activeToken = localStorage.getItem('auth_token') || storedToken
-        currentUser.value = {
-          username: userData.username,
-          role: userData.role || 'user',
-          token: activeToken,
-          uuid: userData.uuid,
-        }
-      } else {
-        localStorage.removeItem('auth_token')
-      }
-    } catch {
-      // network error
-    }
-  }
+  await initAuth()
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
 })
 
-function navigateTo(page: 'sheet' | 'admin' | 'account') {
-  currentPage.value = page
-  const targetPath = page === 'admin' ? '/admin' : page === 'account' ? '/account' : '/'
-  if (window.location.pathname !== targetPath) {
-    window.history.pushState({}, '', targetPath)
-  }
-  showKebabOverlay.value = false
-}
-
-async function onLoginSuccess(user: { username: string; role: string; token: string; uuid?: string }) {
-  currentUser.value = user
+async function onLoginSuccess() {
   // Check if an offline character exists in localStorage to prompt migration
   const guestData = characterApi.loadGuestSheet()
   if (guestData && (guestData.character.name || guestData.character.career)) {
@@ -132,7 +73,7 @@ async function uploadGuestSheet() {
     try {
       const res = await characterApi.saveCharacter(guestData)
       characterApi.clearGuestSheet()
-      if (currentPage.value === 'sheet' && sheetRef.value) {
+      if (route.path === '/' && sheetRef.value) {
         sheetRef.value.loadCharacterSheet(res.uuid)
       }
     } catch (err) {
@@ -141,42 +82,17 @@ async function uploadGuestSheet() {
   }
 }
 
-async function logout() {
-  if (currentUser.value?.token) {
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${currentUser.value.token}` },
-        credentials: 'include',
-      })
-    } catch {
-      // ignore network errors on logout
-    }
-  }
-  localStorage.removeItem('auth_token')
-  characterApi.clearSessionId()
-  currentUser.value = null
-  if (currentPage.value === 'account' || currentPage.value === 'admin') {
-    navigateTo('sheet')
+async function handleLogout() {
+  await logout()
+  if (route.path === '/account' || route.path === '/admin') {
+    router.push('/')
   }
 }
-
-const isAdmin = computed(() => currentUser.value?.role === 'admin')
 </script>
 
 <template>
   <v-app class="wfrp-full-app bg-background text-on-background">
-    <!-- Floating Kebab Button (shown when not on sheet page; on sheet page it is in the actions card) -->
-    <div v-if="currentPage !== 'sheet'" class="kebab-fixed-pos">
-      <v-tooltip text="System Options & Settings" location="left">
-        <template #activator="{ props: tooltipProps }">
-          <v-btn v-bind="tooltipProps" icon="mdi-dots-vertical" color="primary" elevation="8" size="large"
-            class="kebab-fab" @click="showKebabOverlay = true" />
-        </template>
-      </v-tooltip>
-    </div>
-
-    <!-- Kebab POPOUT OVERLAY MODAL (Full Dialog, No dropdown menu) -->
+    <!-- Kebab POPOUT OVERLAY MODAL (Full Dialog for Character Sheet actions) -->
     <v-dialog v-model="showKebabOverlay" max-width="500" transition="dialog-bottom-transition">
       <v-card color="surface" class="pa-6 rounded-xl elevation-24 border">
         <div class="d-flex justify-space-between align-center mb-4">
@@ -209,15 +125,17 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
           <!-- Admin Panel Button (If logged in as Admin) -->
           <v-list-item v-if="isAdmin" prepend-icon="mdi-shield-crown" title="Admin Control Panel"
             subtitle="User & Database Management" color="secondary"
-            class="mb-2 rounded-lg bg-secondary text-on-secondary font-weight-bold" @click="navigateTo('admin')" />
+            class="mb-2 rounded-lg bg-secondary text-on-secondary font-weight-bold"
+            @click="router.push('/admin'); showKebabOverlay = false" />
 
           <!-- Account Settings Button (If logged in) -->
           <v-list-item v-if="currentUser" prepend-icon="mdi-account-cog" title="Account Settings"
             subtitle="Active devices & session security"
-            class="mb-2 rounded-lg bg-surface-variant border" @click="navigateTo('account')" />
+            class="mb-2 rounded-lg bg-surface-variant border"
+            @click="router.push('/account'); showKebabOverlay = false" />
 
           <!-- Sheet Actions (when viewing character sheet) -->
-          <template v-if="currentPage === 'sheet'">
+          <template v-if="route.path === '/'">
             <v-divider class="my-3" />
             <div class="text-caption font-weight-bold text-primary mb-2 text-uppercase">Sheet Actions</div>
 
@@ -245,10 +163,10 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
           <!-- Auth Button -->
           <v-list-item v-if="!currentUser" prepend-icon="mdi-login" title="Sign In / Register"
             class="mt-4 rounded-lg bg-primary text-on-primary font-weight-bold"
-            @click="showKebabOverlay = false; showAuthDialog = true" />
+            @click="showKebabOverlay = false; showAuthModal = true" />
           <v-list-item v-else prepend-icon="mdi-logout" title="Log Out"
             class="mt-4 rounded-lg bg-error text-on-error font-weight-bold"
-            @click="logout(); showKebabOverlay = false" />
+            @click="handleLogout(); showKebabOverlay = false" />
         </v-list>
       </v-card>
     </v-dialog>
@@ -256,23 +174,19 @@ const isAdmin = computed(() => currentUser.value?.role === 'admin')
     <!-- Hidden File Input for JSON Upload -->
     <input ref="fileInputRef" type="file" accept=".json,application/json" class="d-none" @change="handleFileUpload" />
 
-    <!-- PAGE CONDITIONAL RENDERING -->
-    <template v-if="currentPage === 'sheet'">
-      <CharacterSheetPage ref="sheetRef" :current-user="currentUser" @open-menu="showKebabOverlay = true" />
-    </template>
-
-    <!-- STANDALONE ADMIN PAGE VIEW -->
-    <template v-else-if="currentPage === 'admin'">
-      <AdminPage :current-user="currentUser" @back="navigateTo('sheet')" />
-    </template>
-
-    <!-- STANDALONE ACCOUNT PAGE VIEW -->
-    <template v-else-if="currentPage === 'account'">
-      <AccountPage :current-user="currentUser" @back="navigateTo('sheet')" @logged-out="logout" />
-    </template>
+    <!-- ROUTER VIEW -->
+    <router-view v-slot="{ Component }">
+      <component
+        :is="Component"
+        ref="sheetRef"
+        :current-user="currentUser"
+        @open-menu="showKebabOverlay = true"
+        @logged-out="handleLogout"
+      />
+    </router-view>
 
     <!-- Dialogs -->
-    <AuthDialog v-model="showAuthDialog" @login-success="onLoginSuccess" />
+    <AuthDialog v-model="showAuthModal" @login-success="onLoginSuccess" />
     <GuestUploadDialog v-model="showGuestUploadDialog" :character-name="guestCharacterName"
       @confirm-upload="uploadGuestSheet" />
   </v-app>
@@ -288,17 +202,6 @@ input[type='number']::-webkit-inner-spin-button {
 
 input[type='number'] {
   -moz-appearance: textfield;
-}
-
-.kebab-fixed-pos {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  z-index: 1000;
-}
-
-.kebab-fab {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 .wfrp-full-app {
