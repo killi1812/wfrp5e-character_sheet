@@ -298,7 +298,11 @@ class CharacterApiService {
    * If logged in: Saves strictly to backend API, and purges localStorage.
    * If not logged in: Saves to browser localStorage (Guest Mode).
    */
-  async saveCharacter(payload: CharacterSheetPayload, uuid?: string): Promise<SaveCharacterResult> {
+  async saveCharacter(
+    payload: CharacterSheetPayload,
+    uuid?: string,
+    options?: { keepalive?: boolean }
+  ): Promise<SaveCharacterResult> {
     if (!this.isAuthenticated()) {
       this.saveGuestSheet(payload)
       return { success: true, uuid: 'guest', mode: 'local' }
@@ -315,6 +319,7 @@ class CharacterApiService {
       headers: {
         'Content-Type': 'application/json',
       },
+      keepalive: options?.keepalive,
       body: JSON.stringify(this.adaptToBackend(payload, targetUuid)),
     })
 

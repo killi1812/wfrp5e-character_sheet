@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   DEFAULT_CHARACTER,
   DEFAULT_BASIC_SKILLS,
@@ -50,6 +50,7 @@ const currentSheetUuid = ref<string | undefined>(undefined)
 
 // Snapshot for dirty tracking
 const savedSnapshot = ref<string>('')
+const isPersisted = ref(false)
 
 function createSnapshot(): string {
   return JSON.stringify({
@@ -65,9 +66,46 @@ function updateSavedSnapshot() {
 }
 
 const isDirty = computed(() => {
-  if (!savedSnapshot.value) return false
+  if (!isPersisted.value) return true
+  if (!savedSnapshot.value) return true
   return createSnapshot() !== savedSnapshot.value
 })
+
+const isCloudUuid = (u?: string) => Boolean(u && u !== 'mock-gottfried' && u !== 'guest')
+const persistAllowed = () =>
+  isPersisted.value && (
+    characterApi.isAuthenticated()
+      ? isCloudUuid(currentSheetUuid.value)
+      : !isCloudUuid(currentSheetUuid.value)
+  )
+
+function buildPayload() {
+  return {
+    character: character.value,
+    basicSkills: basicSkills.value,
+    advancedSkills: advancedSkills.value,
+    languages: languages.value,
+  }
+}
+
+function flushOnLeave() {
+  if (!isDirty.value || !persistAllowed()) return
+  characterApi.saveCharacter(buildPayload(), currentSheetUuid.value, { keepalive: true }).catch(() => {})
+}
+
+function handleBeforeUnload(e: BeforeUnloadEvent) {
+  if (isDirty.value) {
+    flushOnLeave()
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
+function handlePageHide() {
+  flushOnLeave()
+}
+
+let autoSaveTimer: ReturnType<typeof setInterval> | undefined
 
 onMounted(async () => {
   // Restore guest character sheet from browser localStorage if unauthenticated
@@ -78,11 +116,43 @@ onMounted(async () => {
       basicSkills.value = guestData.basicSkills
       advancedSkills.value = guestData.advancedSkills
       languages.value = guestData.languages
+      isPersisted.value = true
+      updateSavedSnapshot()
+    } else {
+      isPersisted.value = false
+      savedSnapshot.value = ''
     }
   } else {
-    await loadUserCharacter()
+    const loaded = await loadUserCharacter()
+    if (loaded) {
+      isPersisted.value = true
+      updateSavedSnapshot()
+    } else {
+      isPersisted.value = false
+      savedSnapshot.value = ''
+    }
   }
-  updateSavedSnapshot()
+
+  autoSaveTimer = setInterval(() => {
+    if (isDirty.value && !isSaving.value && persistAllowed()) {
+      saveSheet({ silent: true })
+    }
+  }, 30_000)
+
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  window.addEventListener('pagehide', handlePageHide)
+})
+
+onUnmounted(() => {
+  if (autoSaveTimer) {
+    clearInterval(autoSaveTimer)
+    autoSaveTimer = undefined
+  }
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  window.removeEventListener('pagehide', handlePageHide)
+  if (isDirty.value && !isSaving.value && persistAllowed()) {
+    saveSheet({ silent: true })
+  }
 })
 
 // Formulas
@@ -120,30 +190,35 @@ const {
 } = useEncumbrance(character, getCharBonus, getCharCurrent)
 
 // API / Mock Actions
-async function saveSheet() {
+async function saveSheet(opts: { silent?: boolean } = {}) {
+  if (isSaving.value) return
+  const snapshot = createSnapshot()
   isSaving.value = true
   try {
-    const res = await characterApi.saveCharacter({
-      character: character.value,
-      basicSkills: basicSkills.value,
-      advancedSkills: advancedSkills.value,
-      languages: languages.value,
-    }, currentSheetUuid.value)
+    const res = await characterApi.saveCharacter(buildPayload(), currentSheetUuid.value)
 
     if (res.uuid && res.uuid !== 'guest') {
       currentSheetUuid.value = res.uuid
     }
 
-    if (res.mode === 'cloud') {
-      snackbarMessage.value = 'Character sheet saved to cloud account!'
-    } else {
-      snackbarMessage.value = 'Character sheet saved to browser storage!'
+    savedSnapshot.value = snapshot
+    isPersisted.value = true
+
+    if (!opts.silent) {
+      if (res.mode === 'cloud') {
+        snackbarMessage.value = 'Character sheet saved to cloud account!'
+      } else {
+        snackbarMessage.value = 'Character sheet saved to browser storage!'
+      }
+      saveSnackbar.value = true
     }
-    saveSnackbar.value = true
-    updateSavedSnapshot()
-  } catch {
-    snackbarMessage.value = 'Error saving sheet'
-    saveSnackbar.value = true
+  } catch (err) {
+    if (opts.silent) {
+      console.warn('Auto-save failed:', err)
+    } else {
+      snackbarMessage.value = 'Error saving sheet'
+      saveSnackbar.value = true
+    }
   } finally {
     isSaving.value = false
   }
@@ -158,6 +233,7 @@ function loadMockData() {
   currentSheetUuid.value = 'mock-gottfried'
   snackbarMessage.value = 'Loaded demo character (Gottfried von Altdorf)!'
   saveSnackbar.value = true
+  isPersisted.value = true
   updateSavedSnapshot()
 }
 
@@ -173,19 +249,22 @@ function newBlankSheet() {
   }
   snackbarMessage.value = 'New blank character sheet ready.'
   saveSnackbar.value = true
-  updateSavedSnapshot()
+  isPersisted.value = false
+  savedSnapshot.value = ''
 }
 
-async function loadUserCharacter() {
-  if (!characterApi.isAuthenticated()) return
+async function loadUserCharacter(): Promise<boolean> {
+  if (!characterApi.isAuthenticated()) return false
   try {
     const sheets = await characterApi.listCharacters()
     if (sheets.length > 0 && sheets[0].uuid && sheets[0].uuid !== 'mock-gottfried' && sheets[0].uuid !== 'guest') {
       await loadCharacterSheet(sheets[0].uuid)
+      return true
     }
   } catch (err) {
     console.warn('Failed to load user character:', err)
   }
+  return false
 }
 
 async function loadCharacterSheet(uuid: string) {
@@ -199,6 +278,7 @@ async function loadCharacterSheet(uuid: string) {
     currentSheetUuid.value = (uuid !== 'guest' && uuid !== 'mock' && uuid !== 'demo' && uuid !== 'mock-gottfried') ? uuid : undefined
     snackbarMessage.value = `Loaded ${data.character.name || 'character sheet'}!`
     saveSnackbar.value = true
+    isPersisted.value = true
     updateSavedSnapshot()
   } catch {
     snackbarMessage.value = 'Failed to load character sheet'
@@ -293,7 +373,8 @@ async function importJson(file: File) {
     currentSheetUuid.value = undefined
     snackbarMessage.value = `Imported character: "${character.value.name || 'Unnamed'}"`
     saveSnackbar.value = true
-    updateSavedSnapshot()
+    isPersisted.value = false
+    savedSnapshot.value = ''
   } catch (err: any) {
     console.error('Import error:', err)
     snackbarMessage.value = `Failed to import JSON: ${err?.message || 'Invalid file format'}`
@@ -393,7 +474,7 @@ defineExpose({
   <main class="wfrp-sheet-body pa-3 pa-md-5">
 
     <SheetHeaderBlock :character="character" :is-dirty="isDirty" :is-saving="isSaving"
-      :username="currentUser?.username" @open-menu="emit('openMenu')" @save="saveSheet" />
+      :username="currentUser?.username" @open-menu="emit('openMenu')" @save="saveSheet()" />
     <SheetCharacteristicsBlock :character="character" :get-char-current="getCharCurrent"
       :agility-penalty="agilityPenalty" />
     <SheetVitalsBlock :character="character" :computed-walk="computedWalk" :computed-run="computedRun"

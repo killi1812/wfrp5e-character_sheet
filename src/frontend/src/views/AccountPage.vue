@@ -127,7 +127,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="account-page-container bg-background min-vh-100 pa-4 pa-md-6">
+  <div class="account-page-container bg-background min-vh-100 pa-3 pa-md-5">
     <!-- Top Header Bar -->
     <v-card color="surface" elevation="3" class="pa-4 rounded-xl mb-6 border">
       <div class="d-flex flex-wrap justify-space-between align-center gap-3">
@@ -434,8 +434,8 @@ onMounted(() => {
 
 <style scoped>
 .account-page-container {
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
+  min-height: 100vh;
 }
 
 .border-bottom {
